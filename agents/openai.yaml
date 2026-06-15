@@ -1,0 +1,4 @@
+interface:
+  display_name: "Axure to Frontend"
+  short_description: "Convert Axure exports into frontend pages"
+  default_prompt: "Use $axure-to-frontend to convert an Axure 11 export directory into a typed responsive frontend project."
