@@ -1,277 +1,185 @@
 ---
 name: axure-to-frontend
-description: Convert Axure RP 11 exported prototype directories into TypeScript frontend page projects. Use when Codex is asked to analyze an Axure export, identify pages, widgets, assets, event scripts, conditional logic, variables, style states, dynamic panels, repeaters, tables, inline frames, and interactions, then ask required user choices, initialize, and implement a responsive Vue or React project with Ant Design, Element Plus, or Ant Design Vue while preserving prototype data, page flows, and key behavior.
+description: Convert Axure RP 11 exported prototype directories into TypeScript frontend projects. Use when Codex is asked to analyze Axure exports, recover pages, widgets, assets, data, styles, dynamic panels, repeaters, tables, conditions, events, page flows, or interactions, then plan and implement faithful React/Vue frontend restoration with Ant Design, Element Plus, or Ant Design Vue. Also use when improving or validating Axure-to-frontend restoration fidelity, task decomposition, or conversion rules.
 ---
 
 # Axure To Frontend
 
-## Overview
+## Role
 
-Use this skill to turn an Axure 11 HTML export into a typed, responsive frontend implementation. Preserve the prototype's information, interaction intent, script behavior, and page relationships; replace Axure widgets with framework/library components whenever practical.
+Act first as an Axure expert, then as a frontend restoration orchestrator.
 
-## Prerequisite
+Know Axure's authoring model well enough to make correct conversion choices: pages can be copied state variants, labels can be buttons, dynamic panels can be dialogs, repeaters can be data tables or visual lists, and Axure primitives are not always one-to-one frontend components. Use that Axure understanding to decide what must be analyzed, what must be asked, what can be converted directly, what must be inferred, and what should fall back to faithful child-element reconstruction.
 
-Require the user to have the `obra/superpowers` skill installed before conversion planning. If no superpowers skill is available in the current session, stop before implementation and ask the user to install it from `https://github.com/obra/superpowers`.
+Do not act as a one-shot page generator.
 
-## Workflow
+This skill owns:
 
-1. Ask for the Axure export directory if not supplied.
-2. Ask the user to choose all required options in "Mandatory User Decision Gates" below. Do not infer or silently choose a default unless the user explicitly says to decide automatically.
-3. Inspect the export directory. Prefer `scripts/inspect_axure_export.py` for a first pass, then execute each priority page's Axure page data script and recursively extract a structured widget inventory as described in "Executable Page Data Extraction" below:
+1. User decisions and scope control.
+2. Axure code/style/data extraction.
+3. Fidelity ledgers and evidence gates.
+4. Component and interaction interpretation.
+5. Detailed task decomposition for large prototypes.
+6. Validation standards and acceptance reporting.
+
+Use a superpowers-style process skill for the execution loop after analysis: create granular tasks, implement task-by-task, verify each task, and iterate from evidence. If no superpowers or `using-superpowers` process skill is available in the current session, stop before conversion planning and ask the user to install or enable it.
+
+## Skill Size Rule
+
+Keep this `SKILL.md` as the compact entrypoint. Do not add long component tables, Axure capability catalogs, examples, or page-specific lessons here. Put detailed rules in `references/`, deterministic extraction in `scripts/`, and reusable output scaffolds in `assets/` only when needed.
+
+## Operating Model
+
+Follow this contract for every conversion:
+
+1. **Decision phase**: ask only the required user choices that affect architecture, scope, restoration depth, output, and validation.
+2. **Evidence phase**: inspect Axure files and execute page data scripts. Produce source-derived ledgers before coding.
+3. **Tasking phase**: use the superpowers process to turn ledgers into a detailed task plan with dependencies and acceptance checks.
+4. **Execution phase**: implement in small batches from the task plan. Do not skip ledger rows or invent data/layout.
+5. **Validation phase**: compare rendered Axure and frontend states, run build/typecheck/lint, test interactions, and record deviations.
+6. **Delivery phase**: produce the frontend project plus README, route map, component map, interaction notes, and validation report.
+
+For large prototypes, never try to restore everything in one pass. Process shared chrome first, then pages in dependency order, then hidden states/interactions, then cross-page flows.
+
+## Required Resource Loading
+
+Load only the references needed for the current phase:
+
+- Analysis and ledgers: `references/axure-analysis.md`
+- Axure capability coverage: `references/axure-official-capabilities.md`
+- Framework/component mapping: `references/frontend-mapping.md`
+- Large-prototype orchestration and task decomposition: `references/orchestration-and-tasking.md`
+
+Prefer scripts for repeatable extraction:
+
+- First-pass export scan:
 
 ```bash
 python <skill-dir>/scripts/inspect_axure_export.py <axure-export-dir> --out axure-analysis.json
 ```
 
-4. Read `references/axure-official-capabilities.md` to understand the Axure capability surface that must be checked.
-5. Read `references/axure-analysis.md` before detailed analysis.
-6. Read `references/frontend-mapping.md` before project initialization and implementation.
-7. After executable extraction, build the fidelity ledgers described in "Code, Style, And Data Fidelity" and pass the evidence-locked gates below. This must happen before route planning, semantic renaming, or UI implementation.
-8. Build a semantic component model as described in "Semantic Component Inference" below. Semantic inference may choose better frontend components, but it must not rewrite already extracted visible text, widget type, control state, data values, or Axure-proven style structure.
-9. Present a concise analysis summary and ask the user to confirm conversion scope and restoration depth before project initialization.
-10. Initialize the selected frontend project in the current working directory unless the user chose another output directory.
-11. Use the installed superpowers skill to create a conversion task checklist from the Axure analysis. The checklist must include official capability coverage, page implementation, component mapping, interaction implementation, responsive behavior, and validation tasks.
-12. Implement the project pages and code. Generate only the frontend project and page code, plus a `README.md`.
-13. Verify the result with local build/typecheck and, when practical, browser screenshots or manual interaction checks.
+- Code-level page extraction:
 
-## Restoration Priority Layers
-
-Restore each requested page in strict layers. Do not move to a lower-priority layer when it would reduce accuracy in a higher-priority layer.
-
-1. Static current-page fidelity comes first: visible widget count, text, asset use, initial visibility, layout relationships, relative proportions, spacing rhythm, color, icon state, panel behavior, and page chrome must match the Axure page before route flow or invented product behavior is added. Axure pixel coordinates and CSS sizes are reference measurements for understanding the current page, not a requirement to hard-code fixed pixel layout.
-2. Current-page internal interactions come second: widget events such as showing hidden dynamic panels, toggling a sidebar state, copying text, opening a dialog, or changing local style/state must be implemented on the exact source widget and target region from the Axure behavior model.
-3. Cross-page navigation and product flow come third: only implement page jumps after the current page's static and internal behavior are restored. Do not convert an internal Axure `show/hide panel` action into navigation, and do not add extra route buttons because a later page exists.
-4. Responsive adaptation is part of fidelity, not a later redesign pass. For desktop-first web prototypes, preserve the Axure desktop composition as the reference at the target viewport, then express it with responsive layout primitives so panels, content areas, and assets adapt within the agreed viewport range.
-
-## Restoration Depth Modes
-
-After analysis, ask the user to choose one restoration depth. The selected depth controls implementation, checklist, README, and validation scope.
-
-1. Static visible-page restoration: implement only the current visible Axure pages/states selected by the user. Accurately restore visible layout, text, assets, controls, chrome, responsive behavior, and page-state screenshots. Do not implement events, conditions, dynamic panel triggers, hidden panels, hover/click behavior, repeaters beyond their visible state, or cross-page flows unless they are visibly present on the selected page. Still inspect the prototype enough to avoid mistaking a state variant for a business page, but document skipped interactions as intentionally out of scope.
-2. Full prototype restoration: deeply restore the selected prototype pages including visible pages, hidden dynamic panels, events, interactions, conditions, variables, repeaters, tables, panel states, dialogs, copy prompts, menu expansion, and cross-page flows according to the Axure behavior model.
-
-If the user chooses static visible-page restoration, do not silently add full interactions because they are easy to implement. If the user chooses full prototype restoration, do not stop at screenshot-level matching.
-
-## Responsive Adaptive Fidelity
-
-Use Axure's absolute positions, widths, heights, and generated CSS as measurement evidence, not as implementation commands.
-
-- Derive the layout model from the prototype: fixed chrome versus fluid content, primary columns, proportional widths, minimum usable sizes, alignment anchors, gaps, overflow behavior, and hidden/visible states.
-- Prefer responsive CSS primitives such as flex, grid, min/max constraints, aspect ratios, intrinsic sizing, and component-library layout APIs over copying Axure's absolute `left/top/width/height` values.
-- Preserve visual relationships rather than literal pixels: item counts, relative order, alignment, hierarchy, density, selected states, and whether a panel grows with content matter more than matching one exported number.
-- Use fixed dimensions only for genuinely fixed UI chrome or controls, such as icon rails, toolbar heights, icon buttons, avatars, known asset aspect ratios, or prototype elements whose behavior is explicitly fixed.
-- When validating, compare screenshots at the agreed target viewport and judge whether the responsive implementation reads like the same current page. Do not reject an implementation solely because its CSS values differ from Axure's generated CSS.
-
-## Viewport-Adaptive State Changes
-
-When a prototype interaction shows/hides content, expands/collapses a side menu, or changes a panel state, preserve the page's intended viewport behavior. Do not let an internal state change accidentally create document-level scrollbars unless the Axure prototype clearly grows the page or uses a scrolling region.
-
-- Determine the intended scroll model from the prototype: fixed app shell, fixed side rail, fluid main region, local scroll panel, or full document scroll. Treat this as part of the layout model.
-- For app-like desktop pages, prefer a fixed viewport shell with `height: 100vh`, `min-height: 0`, flex/grid children, and local overflow regions. Hidden panels revealed inside the current page should usually consume reserved/adaptive space inside the main content area.
-- Side menu expand/collapse should resize or reflow the adjacent main content area in place. It should not navigate, create body scroll, or push content below the viewport unless the original shell does that.
-- If an interaction reveals a panel below an existing asset, first try responsive compression, reserved space, proportional heights, or local overflow within that content region. Only use body/page scroll when the original page visibly extends vertically or the user has requested document-style scrolling.
-- Validate state changes at the target viewport by comparing `document.documentElement.scrollHeight` to the viewport height and by checking whether any scrollbar is intentional. A new body scrollbar after a local show/hide interaction is a defect unless documented as faithful to the prototype.
-
-## Interaction Content Extraction
-
-When an interaction reveals content, restore the revealed content as carefully as the initial page.
-
-- For every `show`, `hide`, `set panel state`, drawer, modal, dynamic panel, repeater, or table action, parse the full target widget subtree before implementation. Do not summarize a revealed panel into a few invented fields.
-- Cross-read `files/<page>/data.js`, `files/<page>/styles.css`, and the exported `<page>.html`. `data.js` is best for widget identity, hierarchy, geometry, visibility, and event targets; the exported HTML often preserves the final visible text for generated vector/table widgets. Use both sources to build the interaction content model.
-- For hidden dynamic panels, record initial visibility, trigger widget, target widget id/label, animation, panel state, child widget count, child order, major grouping, tables, buttons, prompts, and nested interactions.
-- For revealed information panels, preserve semantic grouping and column structure. If the Axure panel is visually three columns, implement a responsive three-column layout or an equivalent adaptive layout that keeps the same grouping and information density.
-- For buttons inside revealed panels, copy the exact visible label from the Axure HTML/text layer. Do not infer labels from the action name or target panel label; for example, a button that opens a contact panel may still be labeled `分享`.
-- For repeaters, preserve both the data rows and the item template controls. If a repeater row contains a checkbox, radio, status icon, avatar, row action, or selection state in the template, implement that control in the frontend table/list instead of only mapping the textual data columns.
-- For table widgets, preserve the row/column grouping and visible cell text from the exported HTML when `data.js` stores cells as generated images or empty text nodes.
-- Treat generated post-action content as a first-class acceptance target: after triggering the source widget, compare field counts, column counts, button labels, table rows, selectable controls, and nested panel behavior against the Axure page.
-
-## Executable Page Data Extraction
-
-Do not manually infer Axure structure by reading compressed `data.js` text or keyword-searching it. The primary parser must execute the page data script in a controlled local JavaScript environment, capture the object passed to `$axure.loadCurrentPage`, and recursively walk the resulting object graph.
-
-Use this method for every entry page, priority page, interaction target page, and any page suspected to be a state variant:
-
-1. Stub `$axure.loadCurrentPage` and execute `files/<page>/data.js` locally with Node or an equivalent JavaScript runtime. The script is local export data; do not browse or fetch remote resources to interpret it.
-2. Capture the returned page object and recursively walk `page.diagram.objects`, nested `objects`, `objs`, `diagrams`, panel states, repeater templates, table cells, and grouped/layered widgets.
-3. Emit or maintain a structured inventory with at least: `id`, `scriptId`, `label`, `friendlyType`, `type`, `visible`, `style.location`, `style.size`, text when available, images, `interactionMap`, dynamic panel states, repeater `data`, repeater `dataProps`, and parent/ancestor path.
-4. Build indexes from that inventory: by id/scriptId, by label, by type, by visible state, by interaction target, and by parent dynamic panel/repeater/table.
-5. Resolve each interaction target through the id index and inspect the full target subtree before coding. If a target is a hidden dynamic panel, recurse into all states and child widgets even though it is not visible initially.
-6. Extract controls from repeater item templates, not only the repeater data set. Checkboxes, radios, avatars, action icons, row status widgets, and template layout are part of the data model for frontend restoration.
-7. Extract table structure from table/tableCell nodes and cross-check visible cell text in the exported HTML when the executable object stores cells as generated images or empty text.
-8. Use literal text search only after this executable extraction, for specific strings or to reconcile missing text. Never let keyword search replace the recursive inventory.
-
-Minimum Node pattern:
-
-```js
-const fs = require("fs");
-let page;
-global.$axure = { loadCurrentPage: (value) => { page = value; } };
-eval(fs.readFileSync("files/create-meeting/data.js", "utf8"));
-
-function walk(node, ancestors = [], out = []) {
-  if (!node || typeof node !== "object") return out;
-  out.push({
-    id: node.id,
-    scriptId: node.scriptId,
-    label: node.label,
-    friendlyType: node.friendlyType,
-    type: node.type,
-    visible: node.visible,
-    location: node.style?.location,
-    size: node.style?.size,
-    text: node.text,
-    images: node.images,
-    interactionMap: node.interactionMap,
-    data: node.data,
-    dataProps: node.dataProps,
-    path: ancestors.map((item) => item.label || item.friendlyType || item.type || item.id).filter(Boolean),
-  });
-  for (const key of ["objects", "objs", "diagrams"]) {
-    if (Array.isArray(node[key])) {
-      for (const child of node[key]) walk(child, ancestors.concat(node), out);
-    }
-  }
-  return out;
-}
-
-const inventory = walk(page.page.diagram);
+```bash
+node <skill-dir>/scripts/extract_axure_page_data.js <axure-export-dir> <page-key> --out <output-json>
 ```
 
-If a selected stack uses TypeScript or Python tooling, the extractor may be wrapped in that tooling, but the core rule remains: execute the Axure page data script, capture the real object graph, and recursively inspect it before implementation.
-
-## Code, Style, And Data Fidelity
-
-Do not stop at visual recognition. For every priority page and every primary interaction state, build and use three fidelity ledgers before coding:
-
-1. Code structure ledger: widget ids/scriptIds, Axure `friendlyType`, semantic role, parent/group/dynamic-panel path, initial visibility, event map, interaction targets, and frontend component choice.
-2. Style ledger: Axure CSS selectors, location, size, font, color, border, fill, radius, opacity, selected/hover/disabled state styles, icon image/color, and local grouping/spacing. Use generated CSS and exported HTML together; do not rely on screenshots alone.
-3. Data/text ledger: exact visible text, default form values, select options, checkbox/radio selected state, table cells, repeater rows, hidden panel text, action labels, URLs, passwords, time-zone rows, and post-action generated content.
-
-Implementation must reconcile all three ledgers:
-
-- Before semantic route or product-component inference, freeze a content-level inventory for the current page/state: visible text, menu titles, item count, item order, selected state, default values, button labels, and hidden-panel text. The frontend may map routes to cleaner paths, but visible labels must remain exactly as the Axure page exports unless the user explicitly asks for a product redesign.
-- If Axure uses a primitive to represent a known frontend control, upgrade to the framework component while preserving data and style. For example, `text_field + calendar icon + date value` must become a usable DatePicker/Calendar component, not a plain input, and validation must click/open the picker.
-- Component-library defaults are not accepted as fidelity by themselves. Override theme, props, or CSS when the prototype style differs. For example, checkbox colors, check marks, outer containers, label spacing, and border presence must be matched from Axure CSS/SVG instead of inheriting the library's default green/blue style.
-- When a prototype control is a composite of container rectangles plus native-like controls, preserve both layers: the semantic control behavior and the exact container/border/background style. Do not add extra borders, cards, or wrapper chrome unless the Axure CSS has that border/background.
-- Preserve widget type by source context. A `textBox`/`text_field` with a value remains an editable or read-only Input according to Axure state; a `checkbox` remains a checkbox; a `radioButton` remains a radio; a `comboBox` remains a select. Do not render a form input as a static label because its value looks fixed in the screenshot. If the same value appears inside a hidden information panel as label text, treat that panel context separately.
-- Treat CSS selector scope as part of fidelity. When replacing Axure widgets with library components, inspect the generated DOM/classes and ensure local CSS does not accidentally style internal library wrappers as extra Axure containers. An extra bordered square/card around a checkbox, radio, date icon, or label is a defect unless there is a matching Axure rectangle or group in the style ledger.
-- For interaction-revealed panels, extract the target panel's original subtree and exported HTML text before coding. Preserve exact labels, values, URLs, time rows, table cells, and button text. Do not substitute normalized or invented product data.
-- For revealed-panel layout, use the target panel's CSS coordinates as the source of grouping: column x positions, y positions, widths, row heights, separator lines, and action button placement. Convert to responsive layout only after preserving that grouping.
-- For copied navigation/sidebar chrome, count visible menu icons, menu titles, toggle affordances, separators, selected states, icon assets, coordinates, collapsed/expanded variants, and link targets from the current page's code/style/data. Do not infer a menu from product assumptions, sitemap page names, or common product terminology. Route aliases may be normalized internally, but visible menu text and order must come from Axure evidence.
-- Each implemented priority page must include an internal checklist mapping ledger rows to frontend code. Missing rows are defects, not optional polish.
-
-## Evidence-Locked Restoration Gates
-
-These gates prevent plausible but unfaithful restorations. They are mandatory for every requested page and for every revealed interaction state in full restoration mode.
-
-1. Content gate: produce a source-derived list of all visible text nodes and title/tooltips that affect UI meaning, grouped by region. For menus, sidebars, tabs, toolbars, buttons, and form labels, verify exact count, order, selected state, and visible label before any route or component naming is decided.
-2. Control gate: produce a source-derived list of all operable widgets from executable `data.js`: `textBox`, `comboBox`, `checkbox`, `radioButton`, clickable labels/shapes/groups, repeaters, tables, dynamic panels, inline frames, and widgets with `interactionMap`. The implementation must map each direct control to an operable frontend component unless the selected restoration depth intentionally excludes it.
-3. Style-structure gate: produce a source-derived list of visual containers around controls: rectangles, borders, fills, groups, and CSS selectors. When using Ant Design, Element Plus, or Ant Design Vue, style only the intended frontend wrapper. Do not create new inner boxes, cards, borders, helper rows, labels, or action buttons that do not have a matching Axure object or documented user-approved reason.
-4. Data gate: produce a source-derived list of default values, table/repeater rows, hidden panel values, URLs, passwords, time rows, and action labels. The implementation must use these values exactly and must not replace them with normalized examples.
-5. Blocking rule: if any gate cannot be completed from `data.js`, CSS, HTML, or assets, pause the affected area and document the uncertainty instead of inventing UI. Continue only after inspecting the rendered Axure page or receiving user approval for an assumption.
-
-## Semantic Component Inference
-
-Axure widget types are authoring primitives, not frontend component truth. The conversion must infer product-level components from structure, repeated layout, labels, events, and route behavior before mapping to React/Vue/component-library code.
-
-- Treat `friendlyType` as evidence, not a one-to-one mapping. Direct mappings are valid for clear controls such as text boxes, text areas, droplists, checkboxes, radios, tables, and repeaters, but many product controls are composed from labels, rectangles, images, groups, and dynamic panels.
-- Any widget with an `interactionMap` is an interactive candidate even if it is a label, rectangle, image, vector shape, icon, line, or group. Parse its event cases and action sequence before deciding whether it is a button, icon button, menu item, tab, table row action, link, upload trigger, modal close control, or state toggle.
-- Build a route graph from sitemap pages and `linkWindow` actions. When multiple pages repeat the same header/sidebar/menu chrome and menu items link to other pages, implement that repeated chrome as a shared application layout with a route outlet. The frontend route should update the main content area; do not duplicate the menu as separate page content just because Axure copied it onto every page.
-- Detect state-variant pages by repeated visual chrome, repeated main content, reciprocal links, and names such as expanded/collapsed, default, no-share, video, share-screen, timeline, or similar state labels. Prefer component state for state variants unless the user explicitly wants Axure filenames preserved as routes.
-- Infer menus from repeated vertical or horizontal groups of icon/text items, selected states, hover states, collapse/expand controls, and `linkWindow` targets. A copied Axure menu across pages should become a framework `Layout`/`Sider`/`Menu` or equivalent app shell component, but the visible item labels, order, count, active item, and collapsed/expanded affordance must be taken from the evidence-locked content/style ledgers. Do not rename `通信录` to `通讯录`, `费用帐单` to `账户账单`, or similar "better" product wording unless the user asks for wording cleanup.
-- Infer buttons from clickable labels, rectangles, image groups, icon+text groups, and styled shapes. Preserve the visible text from the exported page, not the event action name. If a button-looking label opens a panel or route, implement it as a button or link according to product behavior.
-- Infer forms from clustered label/input/select/checkbox/radio/button widgets inside a panel or page region. Convert the cluster into library form items, preserving labels, placeholders, defaults, required marks, hints, validation states, submit/cancel actions, and local panel behavior.
-- Infer toolbars and filter bars from compact label/input/select/date/button groups above tables, lists, calendars, or dashboards. Convert them into toolbar/filter components instead of loose positioned labels.
-- Infer upload components from a visible drop area, image/icon placeholder, upload wording, file hints, or event-bearing label/icon groups. Implement with the selected library's upload component when behavior is upload-like, even if Axure used only a label, image, or rectangle.
-- Infer tabs, segmented controls, and setting categories from repeated selectable labels/groups that set selected state or switch dynamic panel states. Implement them as tabs, segmented controls, menu groups, or side settings navigation according to layout.
-- Infer dialogs, drawers, popovers, and confirmation panels from hidden dynamic panels, overlays, fixed positioning, bring-to-front actions, close icons, and show/hide actions. Restore the full hidden subtree and interaction behavior.
-- Infer data tables and selectable lists from repeaters/tables plus row templates. Preserve selection controls, row actions, avatars/status icons, data bindings, and template layout, not just textual columns.
-- Keep an "Axure widget -> semantic component -> frontend component" mapping note in the generated README for all inferred components that are not direct one-to-one mappings.
+`page-key` is the folder name under `files/`, such as `create-meeting`, `meeting-setup`, or `glossary`.
 
 ## Mandatory User Decision Gates
 
-Ask and wait for explicit user choices at these points. Do not proceed past a gate by choosing the first option, using a default, or making an assumption unless the user has explicitly requested automatic decisions. Batch related questions so the user can answer efficiently.
+Do not proceed past a gate by silently choosing defaults unless the user explicitly asks you to decide automatically.
 
 ### Before Analysis
 
-1. Entry page: ask which Axure page should be the product entry page. If the sitemap is available, list detected page names.
-2. Frontend stack: ask the user to choose one of:
+Ask for any missing values:
+
+1. Axure export directory.
+2. Entry page.
+3. Frontend stack:
    - `React + Vite + TypeScript + Ant Design`
    - `Vue 3 + Vite + TypeScript + Element Plus`
    - `Vue 3 + Vite + TypeScript + Ant Design Vue`
-3. Prototype type: ask whether the source is a web page prototype or mobile prototype.
-4. Output location: ask for project directory/name, or ask permission to initialize in the current working directory.
+4. Prototype type: web or mobile.
+5. Output location.
 
 ### After Analysis
 
-Show detected pages, likely route mapping, state variants, special Axure capabilities, major data sets, and major assets. Then ask the user to confirm:
+Show detected pages, route candidates, repeated chrome, state variants, special Axure capabilities, major assets, and data sets. Then ask for:
 
-1. Conversion scope: all detected pages or selected pages only.
-2. Route strategy: accept proposed product routes, edit route names, or keep a closer Axure filename mapping.
-3. State consolidation: merge Axure pages that are only screen states into component state, or keep them as separate routes.
+1. Conversion scope: all pages or selected pages.
+2. Route strategy: product routes, edited routes, or Axure-filename-close routes.
+3. State consolidation: merge state-variant pages into component state or keep routes.
 4. Restoration depth:
-   - Static visible-page restoration: only restore selected visible page/state UI, no event/interaction/hidden-trigger implementation.
-   - Full prototype restoration: restore visible UI plus events, interactions, conditions, flows, hidden panels, repeaters, tables, and state changes.
-5. Asset strategy exceptions: use framework icons for generic UI icons, but ask before replacing any ambiguous product-specific icon or visual asset.
-6. Responsive targets: desktop/tablet/mobile breakpoints for web prototypes, or target device widths for mobile prototypes.
-7. Data handling: keep all prototype data as local typed mock data, or prepare an API/data-service layer without real backend calls.
-8. Implementation order: ask which page or flow to implement first when the prototype is large.
+   - Static visible-page restoration.
+   - Full prototype restoration with events, hidden panels, repeaters, conditions, and flows.
+5. Asset exceptions: generic framework icons versus copied product/content assets.
+6. Responsive target: desktop/tablet/mobile or explicitly desktop-only.
+7. Data handling: local typed prototype data or frontend API/service scaffolding.
+8. Implementation order for large prototypes.
 
-If a decision materially changes architecture, routes, component boundaries, assets, or implementation effort, ask the user instead of silently choosing.
+## Evidence Model
 
-## Core Rules
+Before implementation, create source-derived evidence. At minimum:
 
-- Ignore Axure-generated player/start files such as `start.html`, `start_c_1.html`, `start_with_pages.html`; treat `index.html` as generated unless the sitemap or user explicitly identifies it as a real prototype page.
-- Prefer `data/document.js` for sitemap/page relationships and `files/<page>/data.js` plus `files/<page>/styles.css` for page-specific objects and interactions.
-- For page-level structure, execute `files/<page>/data.js` and recursively extract the object graph. Do not rely on visual guessing, compressed source reading, or keyword-only grep to understand dynamic panels, repeaters, tables, checkboxes, buttons, or interaction targets.
-- Treat Axure interactions as executable behavior to interpret, not decoration. Build a behavior model of events, conditions, variables, action sequences, style states, target widgets, and visible results before coding.
-- Honor the selected restoration depth. In static visible-page restoration, document interaction and hidden-panel findings but do not implement them. In full prototype restoration, implement them as first-class requirements.
-- Build a page-chrome inventory before coding: top bars, side rails, global navigation, user/system controls, repeated icon groups, collapsed/expanded states, and shared shell proportions. Count all visible navigation/menu icons even when they are unlabeled image widgets.
-- Build a menu content inventory before coding: exact source labels or title attributes, item order by coordinates, selected item, icon ids/assets, link targets, collapsed state, expanded state, and toggle affordance. Use sitemap/page names only to understand route relationships; never use them to replace current-page menu labels.
-- Treat pages named like `*-menu-expend`, `*-menu-expand`, `*-sidebar-*`, or pages that only change a shared shell's rail width as state variants until proven otherwise. Use them to implement local sidebar/menu expansion state, not as product routes or business pages by default.
-- Anchor every interaction to its Axure source widget and target widget. Hidden dynamic panels should remain hidden initially and appear in the same page region when the source event says `show`; their internal controls must not be promoted into the initial visible form.
-- Do not replace one Axure call-to-action with multiple invented buttons. Keep button count, labels, and initial visibility faithful unless the user explicitly approves a product redesign.
-- Preserve prototype data exactly unless the user asks to change it. Do not invent extra records, labels, sections, or layout.
-- Preserve prototype control types exactly at the source context. A visible Axure text field is implemented as an Input or equivalent library input, even if it contains a static-looking default value. A visible checkbox remains a checkbox and should not be wrapped with extra bordered markup beyond Axure-proven containers.
-- Copy and use non-icon prototype visual assets such as screenshots, avatars, brand marks, diagrams, PNG/JPG photos, and content images from the Axure export. Do not replace real content/brand/image assets with placeholders. If an asset is a generic UI icon, prefer the selected frontend icon library instead of copying the Axure image, and document meaningful replacements when needed. If a referenced non-icon asset is missing, document the missing path and visible impact in `README.md`.
-- Do not preserve Axure page names as final route names by default. Derive clean product routes from page intent, then document the mapping in `README.md`.
-- Recreate layout similarity and information hierarchy, not Axure's fixed pixel canvas. Output must be responsive for the selected web/mobile target.
-- Preserve the prototype's scroll model during state changes. Showing hidden panels or expanding menus should reflow within the intended app viewport or local region, not accidentally create body scrollbars.
-- Use the selected component library first. Build custom components only when no equivalent component exists or when the library component would lose the prototype behavior.
-- For lists, repeaters, and tables, infer column widths from content: fixed-action/icon/status columns stay fixed; variable text columns flex to content/available space. Never distribute all columns equally by default.
+1. Page inventory from `data/document.js`, root HTML files, and `files/<page>/data.js`.
+2. Route graph from sitemap and `linkWindow` actions.
+3. Shared chrome inventory: topbar, sidebar, menu labels, icons, selected states, collapse/expand variants, and link targets.
+4. For every selected page/state:
+   - Code structure ledger: ids, scriptIds, Axure types, parent paths, visibility, events, target widgets.
+   - Layout ledger: panel bounds, columns, rows, repeated item geometry, y-order, scroll model.
+   - Style ledger: CSS selectors, colors, borders, fills, radius, fonts, opacity, state styles.
+   - Data ledger: exact visible text, default values, options, rows, URLs, dates, passwords, labels, action text.
+   - Component map: Axure evidence -> semantic role -> frontend component -> fallback.
+   - Interaction map: event source -> action sequence -> target state/panel/route -> validation state.
 
-## Visual Fidelity Validation
+Do not start coding a page until its visible state ledger and required component map exist. For full restoration, do not implement an interaction until the target subtree has been extracted.
 
-For each implemented entry or priority page, validate against the Axure page before considering the page complete:
+## Non-Negotiable Fidelity Rules
 
-- Capture or inspect the Axure page at the target desktop viewport and compare it with the frontend at the same viewport.
-- Check page chrome first: title bar, right-side controls, side menu proportion, toggle affordance, exact menu labels, menu item count/order, selected item, and expanded/collapsed variants.
-- Check the main content next: panel proportions and adaptive height behavior, field count/order, source control type, default values, checkbox/radio wrapper structure, icon colors, asset placement, and hidden/visible panels.
-- Trigger the primary page interaction and verify the resulting local state against Axure actions, especially hidden dynamic panels, repeaters, copy prompts, contact panels, and generated invitation/details sections.
-- For every revealed panel, validate visible text, column/group structure, button labels, table cell text, repeater row count, and selection controls such as checkboxes or radios.
-- Validate viewport behavior after interactions: side menu expansion and hidden-panel reveal should preserve the intended shell size and should not introduce document-level scrollbars unless the prototype itself does.
-- Record any intentional deviation in `README.md`; otherwise fix the implementation rather than explaining the mismatch away.
+1. Data fidelity comes first. Use prototype data exactly; do not invent or normalize text, rows, labels, dates, URLs, passwords, or button wording.
+2. Layout fidelity comes second. Preserve visible count, hierarchy, columns, bands, alignment, density, grouping, and scroll model. Use Axure coordinates as topology evidence, not as mandatory fixed CSS.
+3. Component fidelity comes third. Map direct controls directly; infer composites only from type, HTML, styles, neighboring widgets, and events. A faithful child-element reconstruction is better than a wrong high-level component.
+4. Interaction fidelity comes fourth. Implement events from Axure action sequences and target widgets. Do not convert a `show/hide` panel action into route navigation.
+5. Cross-page flow comes last. Shared shell and current-page fidelity must be stable before broad navigation is added.
+6. State scopes must not leak. Hidden dialog/drawer/popover children and inactive panel-state children must not appear in the parent page layout.
+7. Modal-like hidden dynamic panels must map to framework Modal/Dialog/Drawer/Popover when structure supports it.
+8. Repeater/table extraction must include both data rows and item template controls, including checkboxes, radios, avatars, row actions, and status icons.
+9. Framework defaults are not sufficient if they change prototype structure. Remove extra borders, wrappers, helper rows, button text spacing, or library colors that have no Axure evidence.
+10. Validate rendered Axure and frontend at the same viewport before accepting a page or interaction state.
 
-Apply validation according to the selected restoration depth:
+## Component Interpretation Summary
 
-- Static visible-page restoration: validate only selected visible pages/states, visible chrome, visible content, visible controls, visible assets, responsive behavior, and scroll model. Do not fail the build for unimplemented hidden panels or interactions when they were explicitly out of scope; document them as skipped.
-- Full prototype restoration: validate both visible pages and triggered states, including hidden panels after reveal, event outcomes, repeater controls, conditions, cross-page navigation, dialogs, copy prompts, and viewport behavior after each primary interaction.
+Use `references/frontend-mapping.md` for the detailed table. Core rules:
 
-## Required README
+- `checkbox`, `radioButton`, `textBox`, `comboBox`, table, and repeater are direct evidence for corresponding frontend controls.
+- Text input subtype matters: password, email, number, tel, URL, search, file, date, month, and time should map to specialized framework controls when supported.
+- Labels, rectangles, images, shapes, and groups with `interactionMap` are interactive candidates. Parse events before deciding Button, Link, MenuItem, Tab, Upload trigger, row action, close control, or state toggle.
+- Axure primitives often compose real frontend structures: menus, forms, toolbars, filters, uploaders, tabs, dialogs, cards, and shell layouts.
+- If uncertain after checking source code, CSS, HTML, rendered behavior, and events, reconstruct the visible child elements faithfully and document the fallback.
 
-Create `README.md` in the generated project with:
+## Superpowers Task Handoff
 
-- Selected stack and prototype type.
-- Selected restoration depth and what it includes/excludes.
-- Axure entry page and generated route mapping.
-- Page-to-page interaction flow as a Mermaid diagram.
-- Important page-internal events, conditional branches, variable/state changes, and action sequences as Mermaid diagrams or concise descriptions.
-- Component mapping notes for dynamic panels, repeaters, tables, inline frames, dialogs, forms, and custom components.
-- Copied asset inventory or summary, including any missing assets.
-- Validation checklist covering layout similarity, route coverage, data preservation, key interactions, component-library replacement, custom implementation gaps, and responsive behavior.
+After evidence is ready, use the superpowers process to create and follow a detailed checklist. The checklist must be generated from ledgers, not from visual guesses.
 
-## References
+Every task should include:
 
-- Read `references/axure-analysis.md` when analyzing Axure export structure, page data, assets, and interactions.
-- Read `references/axure-official-capabilities.md` when checking Axure's supported prototype capabilities against the export.
-- Read `references/frontend-mapping.md` when choosing commands, route structure, component mappings, responsive layout rules, and validation criteria.
+- Task id and title.
+- Source page/state/interaction.
+- Evidence files and ledger rows.
+- Dependencies.
+- Implementation files.
+- Acceptance checks.
+- Validation command or screenshot target.
+- Known uncertainty or allowed deviation.
+
+Use `references/orchestration-and-tasking.md` for required task hierarchy and batching rules.
+
+## Validation Requirements
+
+For every implemented page or primary interaction state:
+
+1. Run build/typecheck and lint when available.
+2. Capture Axure and frontend screenshots at the agreed viewport when practical.
+3. Check content, controls, layout, style structure, data, state scope, dialog classification, and scroll model.
+4. Trigger primary interactions and validate revealed panels, row actions, dialogs, repeated controls, and generated content.
+5. Record intentional deviations in README or validation report. Otherwise fix the implementation.
+
+Static restoration validates visible states only. Full restoration validates visible states plus hidden panels, events, conditions, repeaters, dialogs, and cross-page flows.
+
+## Required Delivery Artifacts
+
+The generated frontend project must include:
+
+1. The selected frontend stack.
+2. Implemented routes/pages/components.
+3. Copied assets or documented asset substitutions.
+4. Local prototype data or service scaffold according to user choice.
+5. `README.md` with stack, source directory, restoration depth, route map, page flow, component mapping notes, interaction notes, asset summary, validation checklist, and known deviations.
+
+For large conversions, also maintain generated analysis artifacts under the project, for example:
+
+- `axure-analysis.json`
+- `axure-ledgers/`
+- `task-plan.md`
+- `validation-report.md`

@@ -1,199 +1,168 @@
 # axure-to-frontend
 
+`axure-to-frontend` is a Codex skill for analyzing Axure RP 11 HTML exports and orchestrating faithful frontend restoration into typed React/Vue projects.
+
+This repository contains only the skill package. It does not include Axure prototype files, generated frontend projects, or business application code.
+
 ## 中文说明
 
-`axure-to-frontend` 是一个 Codex skill，用于将 Axure RP 11 导出的 HTML 原型目录还原为响应式 TypeScript 前端项目。
+### 设计定位
 
-本仓库只包含 `axure-to-frontend` 这个 skill，不包含示例原型、生成后的前端项目或其它业务代码。
+这个 skill 首先扮演 **Axure 专家**，其次才是前端还原编排者。
 
-### 功能
+它的核心任务不是直接“一口气生成页面”，而是理解 Axure 的原型表达方式，先做正确判断，再组织后续还原任务：
 
-该 skill 会指导 Codex 分析 Axure 导出目录，并按用户选择的还原深度生成前端项目，支持：
+- Axure 页面可能只是同一个产品页面的不同状态，不一定都是独立路由。
+- Axure 的 label、矩形、图片、组合可能承担按钮、菜单项、上传触发器、工具栏项等语义。
+- 动态面板可能是普通区域，也可能是弹窗、抽屉、浮层、确认框或隐藏交互结果。
+- 中继器可能是表格、列表、卡片或选项集合，必须同时解析数据和模板控件。
+- Axure 元件和真实前端框架组件不是一一对应关系。
 
-- React/Vue + Vite + TypeScript 项目生成。
-- Ant Design、Element Plus、Ant Design Vue 组件映射。
-- 响应式自适应还原，而不是机械复制 Axure 的固定像素 CSS。
-- 执行 Axure `data.js`，递归抽取动态面板、中继器、表格、复选框、按钮和交互目标。
-- 分析后选择“静态可见页面还原”或“完整原型还原”。
-- 识别 Axure 中只表示页面状态的页面，例如左侧菜单展开态，并合并为组件状态。
-- 对非标准 Axure 组合控件做语义识别，例如复制到多页的菜单、用 label 做的按钮、表单/工具栏组合、上传区域、弹窗和隐藏面板。
-- 强制做代码结构、样式、数据/文本三层还原校验，避免只靠截图视觉判断。
-- 在语义推断前锁定内容、控件、样式结构三类证据，避免改写菜单文字、把输入框还原成标签、或给复选框添加原型中不存在的外框。
+因此，本 skill 的职责是：与用户确认选择，解析 Axure 代码/样式/数据，建立证据模型，拆解任务，定义验收标准，再借助 superpowers 风格的执行流程逐项实现和验证。
 
-### 目录结构
+### 三阶段核心思路
+
+1. **用户交互与选择**
+   - 确认 Axure 导出目录、入口页、技术栈、原型类型、输出目录。
+   - 分析后再确认还原范围、路由策略、状态合并策略、还原深度、响应式目标、数据处理方式和实现顺序。
+
+2. **Axure 专家分析与任务生成**
+   - 执行 `files/<page>/data.js`，捕获 `$axure.loadCurrentPage` 的真实对象图。
+   - 递归抽取页面、控件、动态面板、中继器、表格、交互事件、隐藏状态和页面跳转。
+   - 同时读取 `styles.css`、HTML、图片资源和渲染结果。
+   - 生成代码结构、布局、样式、数据、组件映射和交互映射 ledgers。
+   - 基于 ledgers 拆成尽可能细的任务列表，每个任务都有证据、范围、依赖和验收标准。
+
+3. **借助 superpowers 执行还原**
+   - 用任务驱动方式还原，而不是一次性长上下文生成。
+   - 先共享外壳和路由，再还原页面可见状态，再还原隐藏面板和交互，最后处理跨页流程。
+   - 每完成一个任务就构建、截图、点击验证或记录偏差。
+
+### 还原优先级
+
+还原时按以下顺序处理，不能为了后面的语义推断牺牲前面的证据：
+
+1. **数据优先**：原型里是什么文字、默认值、表格数据、按钮文案、URL、日期、密码，就还原什么，不生成新数据。
+2. **布局其次**：保留区域、列、行、层级、对齐、密度、滚动模型和状态作用域。
+3. **组件第三**：能直接映射的 Axure 控件直接映射；复杂组合必须先基于事件、邻近控件、样式和渲染结果推断。
+4. **交互第四**：根据 Axure 事件代码恢复 show/hide、set panel state、复制、弹窗、行操作、跳转等行为。
+5. **跨页流程最后**：当前页面的可见状态、组件和内部交互稳定后，再做全局路由和产品流程。
+
+### 关键注意事项
+
+- 不要靠肉眼在压缩后的 `data.js` 中猜结构。
+- 不要只根据截图还原；必须结合代码、样式、数据和浏览器渲染。
+- 不要把隐藏动态面板的子控件泄漏到父页面布局中。
+- 不要把 Axure 的 show/hide 面板误判成页面跳转。
+- 不要用站点地图或产品常识改写当前页面的菜单文字。
+- 不要把 `textBox` 还原为静态标签。
+- 不要给复选框、单选框、输入框等组件添加原型中不存在的额外边框或容器。
+- 不要让组件库默认样式覆盖原型证据，例如按钮文字自动插空格、复选框颜色、日期图标、表格列宽等。
+- 对不确定的组合控件，优先忠实重建子元素，而不是强行映射成错误的高级组件。
+
+### 避免 skill 过大
+
+主 `SKILL.md` 必须保持为紧凑入口，只描述角色、阶段、门禁、核心原则和必需产物。
+
+详细内容应分散到：
+
+- `references/`：Axure 分析规则、组件映射规则、任务编排规则、官方能力说明。
+- `scripts/`：可重复执行的确定性解析脚本。
+- `agents/`：Codex UI 元信息。
+
+不要把长组件表、案例教训、页面专属规则持续塞进 `SKILL.md`。新增规则如果较长，应进入 reference；新增稳定解析逻辑，应进入 script。
+
+### 仓库结构
 
 ```text
 axure-to-frontend/
 ├── SKILL.md
+├── README.md
+├── LICENSE
 ├── agents/
 │   └── openai.yaml
 ├── references/
 │   ├── axure-analysis.md
 │   ├── axure-official-capabilities.md
-│   └── frontend-mapping.md
+│   ├── frontend-mapping.md
+│   └── orchestration-and-tasking.md
 └── scripts/
-    └── inspect_axure_export.py
+    ├── inspect_axure_export.py
+    └── extract_axure_page_data.js
 ```
 
 ### 安装
 
-将仓库克隆到 Codex skills 目录：
+克隆到 Codex skills 目录：
 
 ```bash
 git clone https://github.com/tianyi092-jcza/axure-to-frontend.git ~/.codex/skills/axure-to-frontend
 ```
 
-Windows 默认目录通常是：
+Windows 默认路径通常是：
 
 ```powershell
 git clone https://github.com/tianyi092-jcza/axure-to-frontend.git "$env:USERPROFILE\.codex\skills\axure-to-frontend"
 ```
 
-安装后重启 Codex 或重新加载会话，让 skill 生效。
+安装后重启 Codex 或重新加载会话。
 
-### 使用方式
+### 使用
 
-在请求中明确提到该 skill：
+在请求中明确使用该 skill：
 
 ```text
 [$axure-to-frontend](path/to/SKILL.md) 将 Axure 原型目录还原为前端项目。
 ```
 
-Codex 会询问必要选项，例如：
-
-- 入口页面。
-- 前端技术栈。
-- 原型类型。
-- 输出目录。
-- 还原深度。
-- 路由/状态合并策略。
-- 响应式目标。
-
-### 还原深度
-
-分析完成后，skill 会让用户选择还原深度：
-
-- **静态可见页面还原**：只还原用户选择的可见页面或状态。速度更快，不实现隐藏面板、事件、交互、条件或流程。
-- **完整原型还原**：还原可见 UI，并进一步实现交互、动态面板、隐藏状态、中继器、表格、条件、弹窗和页面流程。
-
-### 核心解析原则
-
-该 skill 最重要的规则是：对每个优先页面执行 Axure 的 `files/<page>/data.js`，在受控本地 JavaScript 环境中捕获传给 `$axure.loadCurrentPage` 的对象，并递归抽取真实 widget 图。
-
-这样可以避免靠肉眼阅读压缩后的 `data.js` 或只用关键词搜索猜结构，并能把隐藏动态面板、中继器模板、表格单元格、复选框和按钮文字作为正式还原对象。
-
-同时，Axure 的元件类型不是前端组件的一一映射。skill 会根据重复布局、页面跳转、事件脚本、选中状态、标签文字和控件组合，先推断产品语义，再映射为前端组件。例如：多页复制的菜单会被识别为共享应用外壳，带点击事件的 label/矩形会被识别为按钮或菜单项，标签+输入框+下拉框会被识别为表单或筛选工具栏，上传提示区会被识别为上传组件。
-
-但语义推断不能覆盖 Axure 已经明确给出的证据。菜单、标签、按钮、tooltip/title 等可见文字必须按当前页面原文、数量、顺序和选中状态还原；`textBox`、`checkbox`、`radioButton`、`comboBox` 等直接控件必须保持为可操作的前端控件；边框、矩形、分组和容器层级必须来自 Axure CSS/SVG/对象树，不能因为使用组件库而新增原型中不存在的内框或卡片。
-
-还原时必须同时建立代码结构账本、样式账本和数据/文本账本：组件类型要映射正确，例如 Axure 日期输入框组合应还原为可用 DatePicker；样式要从 CSS/SVG 状态中复刻，例如复选框颜色、边框和间距；交互后内容要从隐藏面板原始 HTML/data 中提取，例如会议邀请面板的真实三列数据和按钮位置。
-
-### 校验
-
-如本地有 Codex skill 校验脚本，可运行：
-
-```bash
-python path/to/skill-creator/scripts/quick_validate.py ~/.codex/skills/axure-to-frontend
-```
-
-生成前端项目后的校验，请按生成项目中的 README 执行构建、类型检查和浏览器截图检查。
-
----
-
-## English
-
-`axure-to-frontend` is a Codex skill for converting Axure RP 11 exported HTML prototype directories into responsive TypeScript frontend projects.
-
-This repository contains only the `axure-to-frontend` skill package. It does not include sample prototypes, generated frontend projects, or unrelated application code.
-
-### What This Skill Does
-
-The skill guides Codex through analyzing an Axure export and generating a frontend project according to the restoration depth selected by the user. It supports:
-
-- React/Vue + Vite + TypeScript project generation.
-- Ant Design, Element Plus, or Ant Design Vue component mapping.
-- Responsive adaptive restoration instead of fixed Axure pixel copying.
-- Executable Axure `data.js` extraction for dynamic panels, repeaters, tables, checkboxes, buttons, and interaction targets.
-- A choice between static visible-page restoration and full prototype restoration after analysis.
-- Route/state consolidation for Axure pages that represent UI states, such as expanded side menus.
-- Semantic inference for non-standard Axure compositions, including copied menus, label-based buttons, form/toolbar clusters, upload areas, dialogs, and hidden panels.
-- Mandatory code-structure, style, and data/text fidelity ledgers so restoration is not based on screenshot-level visual guessing alone.
-- Evidence-locked content, control, and style-structure gates before semantic inference, preventing menu label rewrites, input-to-label regressions, and invented checkbox wrappers.
-
-### Skill Structure
+也可以自然语言说明：
 
 ```text
-axure-to-frontend/
-├── SKILL.md
-├── agents/
-│   └── openai.yaml
-├── references/
-│   ├── axure-analysis.md
-│   ├── axure-official-capabilities.md
-│   └── frontend-mapping.md
-└── scripts/
-    └── inspect_axure_export.py
+使用 axure-to-frontend 分析 yuanxing1.0，并输出到 front-web。
 ```
 
-### Installation
+### 常用脚本
 
-Clone this repository into your Codex skills directory:
+第一轮导出目录扫描：
 
 ```bash
-git clone https://github.com/tianyi092-jcza/axure-to-frontend.git ~/.codex/skills/axure-to-frontend
+python scripts/inspect_axure_export.py <axure-export-dir> --out axure-analysis.json
 ```
 
-On Windows, the default Codex skills directory is usually:
-
-```powershell
-git clone https://github.com/tianyi092-jcza/axure-to-frontend.git "$env:USERPROFILE\.codex\skills\axure-to-frontend"
-```
-
-Restart Codex or reload the session so the skill becomes discoverable.
-
-### Usage
-
-Mention the skill when asking Codex to restore an Axure export:
-
-```text
-[$axure-to-frontend](path/to/SKILL.md) Restore this Axure prototype directory as a frontend project.
-```
-
-Codex will ask for required choices such as:
-
-- Entry page.
-- Frontend stack.
-- Prototype type.
-- Output directory.
-- Restoration depth.
-- Route/state strategy.
-- Responsive target.
-
-### Restoration Depths
-
-After analysis, the skill asks which restoration depth to use:
-
-- **Static visible-page restoration**: restore only the selected visible pages or states. This is faster and does not implement hidden panels, events, interactions, conditions, or flows.
-- **Full prototype restoration**: restore visible UI plus interactions, dynamic panels, hidden states, repeaters, tables, conditions, dialogs, and page flows.
-
-### Core Parsing Principle
-
-The most important implementation rule is to execute each priority page's Axure `files/<page>/data.js` in a controlled local JavaScript environment, capture the object passed to `$axure.loadCurrentPage`, and recursively extract the real widget graph.
-
-This avoids guessing from compressed `data.js` text or keyword search alone, and makes hidden dynamic panels, repeater templates, table cells, checkboxes, and button labels first-class restoration targets.
-
-Axure widget types are not one-to-one frontend components. The skill first infers product semantics from repeated layout, page jumps, event scripts, selected states, visible labels, and control clusters, then maps those semantics to frontend components. For example, copied menus across pages become a shared app shell, clickable labels/rectangles become buttons or menu items, label+input+select clusters become forms or filter toolbars, and upload prompt regions become upload components.
-
-Semantic inference is constrained by source evidence. Visible menu, tab, label, button, tooltip, and title text must preserve the current page's exact wording, count, order, and selected state. Direct Axure controls such as `textBox`, `checkbox`, `radioButton`, and `comboBox` must remain operable frontend controls. Borders, rectangles, groups, and wrapper hierarchy must come from Axure CSS/SVG/object data; the generated frontend must not invent extra inner frames or cards around library controls.
-
-Restoration must maintain code, style, and data/text ledgers together: component type must be correct, such as mapping an Axure date-input composite to an operable DatePicker; styles must be copied from CSS/SVG state evidence, such as checkbox color, border, and spacing; post-action content must be extracted from hidden panel HTML/data, such as exact meeting invitation columns and action placement.
-
-### Validation
-
-For basic skill validation, run the Codex skill validation script if available:
+执行单页 `data.js` 并抽取真实对象图：
 
 ```bash
-python path/to/skill-creator/scripts/quick_validate.py ~/.codex/skills/axure-to-frontend
+node scripts/extract_axure_page_data.js <axure-export-dir> <page-key> --out page-ledger.json
 ```
 
-For frontend output validation, follow the generated project README and run the project's build/typecheck plus browser screenshot checks.
+示例：
+
+```bash
+node scripts/extract_axure_page_data.js ./yuanxing1.0 glossary --out glossary-ledger.json
+```
+
+### 校验 skill
+
+如果本机有 `skill-creator`，可运行：
+
+```bash
+python path/to/skill-creator/scripts/quick_validate.py path/to/axure-to-frontend
+```
+
+## English Summary
+
+`axure-to-frontend` is designed as an Axure expert and restoration orchestrator.
+
+It should not behave like a one-shot page generator. It first understands Axure's authoring model, extracts code/style/data evidence, builds fidelity ledgers, decomposes the work into granular tasks, and then uses a superpowers-style execution loop to implement and validate the frontend.
+
+Core principles:
+
+- Keep `SKILL.md` compact.
+- Put detailed rules in `references/`.
+- Put deterministic extraction in `scripts/`.
+- Execute Axure page `data.js` instead of guessing from compressed code.
+- Preserve prototype data exactly.
+- Preserve layout topology and state scope.
+- Map components from evidence, not assumptions.
+- Restore interactions from Axure event/action models.
+- Validate with build checks and rendered screenshot/interaction comparison.

@@ -90,6 +90,48 @@ Do semantic component inference before coding:
 - Hidden dynamic panels with overlays, close icons, and show/hide actions usually indicate modals, drawers, popovers, confirmations, or generated information panels.
 - Repeater and table item templates must be mapped as full row/list components, preserving checkboxes, radios, status icons, avatars, row actions, and selected states.
 
+### Axure Primitive Mapping Table
+
+Use this table as the first-pass component mapping, then refine with events, neighboring widgets, style, and rendered behavior:
+
+| Axure evidence | Frontend mapping |
+| --- | --- |
+| `checkbox` | Checkbox, preserving checked/disabled state and any Axure-proven outer option container |
+| `radioButton` | Radio or Radio.Group, preserving selected state and grouping intent |
+| button widget / primary button / button-like rectangle or group | Button/IconButton, preserving exact visible label, icon, size, fill, and action |
+| `label`, heading, paragraph without events | Typography/text element (`span`, `p`, `h1`, `h2`, `h3`) with original text/style |
+| `label`, heading, rectangle, image, icon, or group with `interactionMap` | Interactive component determined from action: Button, Link, MenuItem, Tab, IconButton, Upload trigger, row action, etc. |
+| `imageBox`, placeholder, snapshot, product/content image | Image component using copied Axure asset |
+| `textBox` / text input | Input family component based on input subtype |
+| `comboBox`, droplist, list box | Select/Listbox, preserving options and default value |
+| table widget | Table, preserving cell text, row/column grouping, and fixed/flexible widths |
+| repeater | Typed data array plus Table/List/Grid/Card template, preserving template controls |
+| hidden dynamic panel with close/confirm/overlay/fixed position/show action | Modal/Dialog/Drawer/Popover according to behavior |
+
+### Text Input Subtypes
+
+Inspect Axure metadata, exported HTML attributes, labels, icons, and events before choosing the frontend input:
+
+| Axure/HTML input type or evidence | Frontend mapping |
+| --- | --- |
+| text | Input |
+| password | Password Input |
+| number | InputNumber or numeric Input |
+| Email/email | Email Input |
+| Phone number/tel | Telephone Input |
+| URL/url | URL Input |
+| search or search icon/event | Search Input |
+| file or upload/drop-zone evidence | Upload/File picker |
+| date or date value + calendar icon/event | DatePicker |
+| month | MonthPicker or DatePicker configured for month |
+| time | TimePicker |
+
+If the chosen frontend library lacks an exact specialized component, use the nearest supported component and document the approximation.
+
+### Component Fallback
+
+If a composite cannot be confidently identified after checking widget type, HTML attributes, events, neighboring labels/icons, style, and rendered behavior, do not invent a high-level component. Reconstruct the original visible child elements faithfully, preserving text, assets, child order, grouping, borders, fills, and state. This fallback is preferred over a wrong framework component.
+
 ## Style And Data Matching For Framework Components
 
 Framework components must be styled from Axure evidence, not left at library defaults:

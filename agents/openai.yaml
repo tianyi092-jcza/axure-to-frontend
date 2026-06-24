@@ -1,4 +1,4 @@
 interface:
   display_name: "Axure to Frontend"
-  short_description: "Convert Axure exports into frontend pages"
-  default_prompt: "Use $axure-to-frontend to convert an Axure 11 export directory into a typed responsive frontend project."
+  short_description: "Analyze Axure exports and orchestrate faithful frontend restoration"
+  default_prompt: "Use $axure-to-frontend to analyze an Axure 11 export, create evidence ledgers and a detailed task plan, then restore it into a typed responsive frontend project."
