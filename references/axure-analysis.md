@@ -38,6 +38,21 @@ Build a page table with:
 
 When multiple Axure pages are state variants of one product screen, prefer one frontend route with component state instead of one route per Axure file. Document that consolidation in `README.md`.
 
+## Fidelity Ledgers
+
+For each priority page, produce three ledgers before implementation:
+
+- Code structure ledger: widget ids/scriptIds, parent/group/dynamic-panel path, Axure type, semantic role, event map, target widgets/pages, and chosen frontend component.
+- Style ledger: CSS selector, x/y/width/height, typography, fill, border, opacity, radius, image/SVG asset, selected/hover/disabled state styles, and relative grouping.
+- Data/text ledger: exact text from exported HTML, default values, select options, checkbox/radio state, table/repeater rows, hidden panel content, URLs, passwords, date/time rows, and button labels.
+
+Use these ledgers to catch common false restorations:
+
+- `text_field + calendar icon + date value` is a date picker intent. Record it as a DatePicker candidate and verify frontend operability.
+- Checkboxes/radios require both data state and style state. Extract the SVG/CSS appearance and any surrounding Axure rectangle separately.
+- Hidden dynamic panels require full text/data extraction from their subtree and HTML, especially post-action invitation/detail panels.
+- Sidebars and menus require icon count/order, separators, selected state, toggle control, collapsed/expanded dimensions, and link targets.
+
 ## Interaction Extraction
 
 Search page `data.js` for these stable interaction/action clues:

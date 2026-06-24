@@ -26,12 +26,13 @@ python <skill-dir>/scripts/inspect_axure_export.py <axure-export-dir> --out axur
 4. Read `references/axure-official-capabilities.md` to understand the Axure capability surface that must be checked.
 5. Read `references/axure-analysis.md` before detailed analysis.
 6. Read `references/frontend-mapping.md` before project initialization and implementation.
-7. After executable extraction, build a semantic component model as described in "Semantic Component Inference" below. This must happen before route planning or UI implementation.
-8. Present a concise analysis summary and ask the user to confirm conversion scope and restoration depth before project initialization.
-9. Initialize the selected frontend project in the current working directory unless the user chose another output directory.
-10. Use the installed superpowers skill to create a conversion task checklist from the Axure analysis. The checklist must include official capability coverage, page implementation, component mapping, interaction implementation, responsive behavior, and validation tasks.
-11. Implement the project pages and code. Generate only the frontend project and page code, plus a `README.md`.
-12. Verify the result with local build/typecheck and, when practical, browser screenshots or manual interaction checks.
+7. After executable extraction, build the fidelity ledgers described in "Code, Style, And Data Fidelity" below. This must happen before route planning or UI implementation.
+8. Build a semantic component model as described in "Semantic Component Inference" below.
+9. Present a concise analysis summary and ask the user to confirm conversion scope and restoration depth before project initialization.
+10. Initialize the selected frontend project in the current working directory unless the user chose another output directory.
+11. Use the installed superpowers skill to create a conversion task checklist from the Axure analysis. The checklist must include official capability coverage, page implementation, component mapping, interaction implementation, responsive behavior, and validation tasks.
+12. Implement the project pages and code. Generate only the frontend project and page code, plus a `README.md`.
+13. Verify the result with local build/typecheck and, when practical, browser screenshots or manual interaction checks.
 
 ## Restoration Priority Layers
 
@@ -137,6 +138,24 @@ const inventory = walk(page.page.diagram);
 ```
 
 If a selected stack uses TypeScript or Python tooling, the extractor may be wrapped in that tooling, but the core rule remains: execute the Axure page data script, capture the real object graph, and recursively inspect it before implementation.
+
+## Code, Style, And Data Fidelity
+
+Do not stop at visual recognition. For every priority page and every primary interaction state, build and use three fidelity ledgers before coding:
+
+1. Code structure ledger: widget ids/scriptIds, Axure `friendlyType`, semantic role, parent/group/dynamic-panel path, initial visibility, event map, interaction targets, and frontend component choice.
+2. Style ledger: Axure CSS selectors, location, size, font, color, border, fill, radius, opacity, selected/hover/disabled state styles, icon image/color, and local grouping/spacing. Use generated CSS and exported HTML together; do not rely on screenshots alone.
+3. Data/text ledger: exact visible text, default form values, select options, checkbox/radio selected state, table cells, repeater rows, hidden panel text, action labels, URLs, passwords, time-zone rows, and post-action generated content.
+
+Implementation must reconcile all three ledgers:
+
+- If Axure uses a primitive to represent a known frontend control, upgrade to the framework component while preserving data and style. For example, `text_field + calendar icon + date value` must become a usable DatePicker/Calendar component, not a plain input, and validation must click/open the picker.
+- Component-library defaults are not accepted as fidelity by themselves. Override theme, props, or CSS when the prototype style differs. For example, checkbox colors, check marks, outer containers, label spacing, and border presence must be matched from Axure CSS/SVG instead of inheriting the library's default green/blue style.
+- When a prototype control is a composite of container rectangles plus native-like controls, preserve both layers: the semantic control behavior and the exact container/border/background style. Do not add extra borders, cards, or wrapper chrome unless the Axure CSS has that border/background.
+- For interaction-revealed panels, extract the target panel's original subtree and exported HTML text before coding. Preserve exact labels, values, URLs, time rows, table cells, and button text. Do not substitute normalized or invented product data.
+- For revealed-panel layout, use the target panel's CSS coordinates as the source of grouping: column x positions, y positions, widths, row heights, separator lines, and action button placement. Convert to responsive layout only after preserving that grouping.
+- For copied navigation/sidebar chrome, count visible menu icons, toggle affordances, separators, selected states, icon assets, and coordinates from the current page's code/style/data. Do not infer a menu from product assumptions or replace the sidebar with a generic menu if the prototype uses an icon rail.
+- Each implemented priority page must include an internal checklist mapping ledger rows to frontend code. Missing rows are defects, not optional polish.
 
 ## Semantic Component Inference
 

@@ -79,12 +79,23 @@ Do semantic component inference before coding:
 
 - Axure primitives are not frontend components. Rectangles, labels, images, vectors, and groups can represent buttons, menu items, tabs, toolbars, upload controls, row actions, close controls, or route links.
 - A widget with events is never "just decorative" until its event script is parsed. Inspect `interactionMap` and action order first, then choose the frontend component by product intent.
+- Upgrade low-level Axure composites to usable framework controls when the product intent is clear. A text field paired with a calendar icon and date-formatted value maps to DatePicker/Calendar. A label-like clickable rectangle maps to Button/Link. A label/icon/drop area maps to Upload. The resulting frontend control must be operable, not only visually similar.
 - Repeated page chrome plus `linkWindow` targets usually indicates an app shell. Convert copied Axure sidebars/topbars into a shared layout with route content, not duplicated per-page markup.
 - Repeated selectable labels/groups that set selected state or switch panel states usually indicate tabs, segmented controls, side settings navigation, or menu groups.
 - Label/input/select/checkbox clusters inside a coherent region usually indicate a form. Compact clusters above tables/lists usually indicate a toolbar or filter bar.
 - Image/icon/label/drop-zone clusters with upload wording or upload-like events usually indicate an upload component, even when Axure did not use a native upload control.
 - Hidden dynamic panels with overlays, close icons, and show/hide actions usually indicate modals, drawers, popovers, confirmations, or generated information panels.
 - Repeater and table item templates must be mapped as full row/list components, preserving checkboxes, radios, status icons, avatars, row actions, and selected states.
+
+## Style And Data Matching For Framework Components
+
+Framework components must be styled from Axure evidence, not left at library defaults:
+
+- DatePicker/Input/Select: preserve prototype value formats, option text, dimensions, icon placement/color, border color, background, and disabled/read-only behavior. Validate the calendar/dropdown opens when the control should be usable.
+- Checkbox/Radio: preserve selected state, check mark color, box size, label spacing, and any surrounding Axure container rectangles. Do not add a library-default colored checkbox or extra border when the Axure SVG/CSS uses a different appearance.
+- Button/IconButton: preserve visible label, icon, size, shape, fill, border, and placement. If the Axure button text is `分享`, do not rename it from the event target or inferred action.
+- Hidden/dynamic panels: preserve exact exported text and data rows from the hidden panel subtree. Use the panel's coordinate groups to infer columns and action placement before applying responsive CSS.
+- Sidebar/menu chrome: preserve icon count, icon order, selected marker, separators, collapse/expand affordance, and collapsed/expanded widths from the page code and CSS. A generic library menu is acceptable only after it is styled to match those facts.
 
 ## Asset Implementation
 
