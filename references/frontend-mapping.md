@@ -65,6 +65,8 @@ Do not preserve Axure page names by default. Derive readable product routes from
 - `meeting-share-screen.html` -> `/meeting/share`
 - `create-meeting.html` -> `/meetings/new`
 
+Route and component names may be normalized, but visible UI text may not. Menu labels, tab labels, form labels, button labels, and title attributes must come from the current Axure page/state content inventory. Do not rewrite labels into more common product wording unless the user explicitly asks for wording cleanup.
+
 When an Axure page only represents a UI state, implement it as component state instead of a route. Keep a route mapping table in `README.md`.
 
 ## Component Mapping
@@ -80,6 +82,7 @@ Do semantic component inference before coding:
 - Axure primitives are not frontend components. Rectangles, labels, images, vectors, and groups can represent buttons, menu items, tabs, toolbars, upload controls, row actions, close controls, or route links.
 - A widget with events is never "just decorative" until its event script is parsed. Inspect `interactionMap` and action order first, then choose the frontend component by product intent.
 - Upgrade low-level Axure composites to usable framework controls when the product intent is clear. A text field paired with a calendar icon and date-formatted value maps to DatePicker/Calendar. A label-like clickable rectangle maps to Button/Link. A label/icon/drop area maps to Upload. The resulting frontend control must be operable, not only visually similar.
+- Preserve direct Axure control types by source context. A `textBox` remains an Input-like component, a `checkbox` remains a Checkbox-like component, a `radioButton` remains a Radio-like component, and a `comboBox` remains a Select-like component unless a documented Axure composite clearly upgrades it, such as date text field plus calendar icon to DatePicker.
 - Repeated page chrome plus `linkWindow` targets usually indicates an app shell. Convert copied Axure sidebars/topbars into a shared layout with route content, not duplicated per-page markup.
 - Repeated selectable labels/groups that set selected state or switch panel states usually indicate tabs, segmented controls, side settings navigation, or menu groups.
 - Label/input/select/checkbox clusters inside a coherent region usually indicate a form. Compact clusters above tables/lists usually indicate a toolbar or filter bar.
@@ -92,10 +95,10 @@ Do semantic component inference before coding:
 Framework components must be styled from Axure evidence, not left at library defaults:
 
 - DatePicker/Input/Select: preserve prototype value formats, option text, dimensions, icon placement/color, border color, background, and disabled/read-only behavior. Validate the calendar/dropdown opens when the control should be usable.
-- Checkbox/Radio: preserve selected state, check mark color, box size, label spacing, and any surrounding Axure container rectangles. Do not add a library-default colored checkbox or extra border when the Axure SVG/CSS uses a different appearance.
+- Checkbox/Radio: preserve selected state, check mark color, box size, label spacing, and any surrounding Axure container rectangles. Do not add a library-default colored checkbox or extra border when the Axure SVG/CSS uses a different appearance. Scope CSS to the intended frontend wrapper so internal library labels/spans are not accidentally styled as new Axure containers.
 - Button/IconButton: preserve visible label, icon, size, shape, fill, border, and placement. If the Axure button text is `分享`, do not rename it from the event target or inferred action.
 - Hidden/dynamic panels: preserve exact exported text and data rows from the hidden panel subtree. Use the panel's coordinate groups to infer columns and action placement before applying responsive CSS.
-- Sidebar/menu chrome: preserve icon count, icon order, selected marker, separators, collapse/expand affordance, and collapsed/expanded widths from the page code and CSS. A generic library menu is acceptable only after it is styled to match those facts.
+- Sidebar/menu chrome: preserve exact visible labels/title attributes, item count/order, icon order, selected marker, separators, collapse/expand affordance, and collapsed/expanded widths from the page code and CSS. A generic library menu is acceptable only after it is styled to match those facts.
 
 ## Asset Implementation
 

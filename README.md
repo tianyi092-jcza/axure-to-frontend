@@ -18,6 +18,7 @@
 - 识别 Axure 中只表示页面状态的页面，例如左侧菜单展开态，并合并为组件状态。
 - 对非标准 Axure 组合控件做语义识别，例如复制到多页的菜单、用 label 做的按钮、表单/工具栏组合、上传区域、弹窗和隐藏面板。
 - 强制做代码结构、样式、数据/文本三层还原校验，避免只靠截图视觉判断。
+- 在语义推断前锁定内容、控件、样式结构三类证据，避免改写菜单文字、把输入框还原成标签、或给复选框添加原型中不存在的外框。
 
 ### 目录结构
 
@@ -83,6 +84,8 @@ Codex 会询问必要选项，例如：
 
 同时，Axure 的元件类型不是前端组件的一一映射。skill 会根据重复布局、页面跳转、事件脚本、选中状态、标签文字和控件组合，先推断产品语义，再映射为前端组件。例如：多页复制的菜单会被识别为共享应用外壳，带点击事件的 label/矩形会被识别为按钮或菜单项，标签+输入框+下拉框会被识别为表单或筛选工具栏，上传提示区会被识别为上传组件。
 
+但语义推断不能覆盖 Axure 已经明确给出的证据。菜单、标签、按钮、tooltip/title 等可见文字必须按当前页面原文、数量、顺序和选中状态还原；`textBox`、`checkbox`、`radioButton`、`comboBox` 等直接控件必须保持为可操作的前端控件；边框、矩形、分组和容器层级必须来自 Axure CSS/SVG/对象树，不能因为使用组件库而新增原型中不存在的内框或卡片。
+
 还原时必须同时建立代码结构账本、样式账本和数据/文本账本：组件类型要映射正确，例如 Axure 日期输入框组合应还原为可用 DatePicker；样式要从 CSS/SVG 状态中复刻，例如复选框颜色、边框和间距；交互后内容要从隐藏面板原始 HTML/data 中提取，例如会议邀请面板的真实三列数据和按钮位置。
 
 ### 校验
@@ -115,6 +118,7 @@ The skill guides Codex through analyzing an Axure export and generating a fronte
 - Route/state consolidation for Axure pages that represent UI states, such as expanded side menus.
 - Semantic inference for non-standard Axure compositions, including copied menus, label-based buttons, form/toolbar clusters, upload areas, dialogs, and hidden panels.
 - Mandatory code-structure, style, and data/text fidelity ledgers so restoration is not based on screenshot-level visual guessing alone.
+- Evidence-locked content, control, and style-structure gates before semantic inference, preventing menu label rewrites, input-to-label regressions, and invented checkbox wrappers.
 
 ### Skill Structure
 
@@ -179,6 +183,8 @@ The most important implementation rule is to execute each priority page's Axure 
 This avoids guessing from compressed `data.js` text or keyword search alone, and makes hidden dynamic panels, repeater templates, table cells, checkboxes, and button labels first-class restoration targets.
 
 Axure widget types are not one-to-one frontend components. The skill first infers product semantics from repeated layout, page jumps, event scripts, selected states, visible labels, and control clusters, then maps those semantics to frontend components. For example, copied menus across pages become a shared app shell, clickable labels/rectangles become buttons or menu items, label+input+select clusters become forms or filter toolbars, and upload prompt regions become upload components.
+
+Semantic inference is constrained by source evidence. Visible menu, tab, label, button, tooltip, and title text must preserve the current page's exact wording, count, order, and selected state. Direct Axure controls such as `textBox`, `checkbox`, `radioButton`, and `comboBox` must remain operable frontend controls. Borders, rectangles, groups, and wrapper hierarchy must come from Axure CSS/SVG/object data; the generated frontend must not invent extra inner frames or cards around library controls.
 
 Restoration must maintain code, style, and data/text ledgers together: component type must be correct, such as mapping an Axure date-input composite to an operable DatePicker; styles must be copied from CSS/SVG state evidence, such as checkbox color, border, and spacing; post-action content must be extracted from hidden panel HTML/data, such as exact meeting invitation columns and action placement.
 

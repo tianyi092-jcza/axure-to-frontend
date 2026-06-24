@@ -46,12 +46,18 @@ For each priority page, produce three ledgers before implementation:
 - Style ledger: CSS selector, x/y/width/height, typography, fill, border, opacity, radius, image/SVG asset, selected/hover/disabled state styles, and relative grouping.
 - Data/text ledger: exact text from exported HTML, default values, select options, checkbox/radio state, table/repeater rows, hidden panel content, URLs, passwords, date/time rows, and button labels.
 
+Before semantic route/component inference, freeze evidence from those ledgers:
+
+- Content inventory: all visible text, title attributes, menu labels, item order, selected states, form labels, default values, and action labels. Visible UI wording must remain exact; route names and internal component names may be normalized separately.
+- Control inventory: all `textBox`, `comboBox`, `checkbox`, `radioButton`, repeater/table controls, clickable labels/shapes/groups, and widgets with `interactionMap`. A direct Axure text field must remain a frontend input/date picker/select according to source context, not a static label.
+- Style-structure inventory: all rectangles, borders, fills, groups, and selector scopes around controls. When replacing Axure controls with a framework component, do not add extra wrapper chrome unless a matching Axure object exists.
+
 Use these ledgers to catch common false restorations:
 
 - `text_field + calendar icon + date value` is a date picker intent. Record it as a DatePicker candidate and verify frontend operability.
-- Checkboxes/radios require both data state and style state. Extract the SVG/CSS appearance and any surrounding Axure rectangle separately.
+- Checkboxes/radios require both data state and style state. Extract the SVG/CSS appearance and any surrounding Axure rectangle separately. Distinguish an Axure outer option rectangle from the checkbox itself so the frontend does not create an extra inner bordered box.
 - Hidden dynamic panels require full text/data extraction from their subtree and HTML, especially post-action invitation/detail panels.
-- Sidebars and menus require icon count/order, separators, selected state, toggle control, collapsed/expanded dimensions, and link targets.
+- Sidebars and menus require exact title/text labels, icon count/order, separators, selected state, toggle control, collapsed/expanded dimensions, and link targets. Do not replace current-page menu wording with sitemap names or product assumptions.
 
 ## Interaction Extraction
 
