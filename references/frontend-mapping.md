@@ -75,6 +75,17 @@ Use the selected library first:
 - Replace Axure-generated generic UI icons with library icons when the semantics match. Keep custom SVG/PNG assets for brand-specific, product-specific, content-specific, or no-library-equivalent icons.
 - Implement custom components for dynamic panels, specialized media surfaces, canvas-like areas, timeline views, multi-state overlays, or any behavior the library cannot express cleanly.
 
+Do semantic component inference before coding:
+
+- Axure primitives are not frontend components. Rectangles, labels, images, vectors, and groups can represent buttons, menu items, tabs, toolbars, upload controls, row actions, close controls, or route links.
+- A widget with events is never "just decorative" until its event script is parsed. Inspect `interactionMap` and action order first, then choose the frontend component by product intent.
+- Repeated page chrome plus `linkWindow` targets usually indicates an app shell. Convert copied Axure sidebars/topbars into a shared layout with route content, not duplicated per-page markup.
+- Repeated selectable labels/groups that set selected state or switch panel states usually indicate tabs, segmented controls, side settings navigation, or menu groups.
+- Label/input/select/checkbox clusters inside a coherent region usually indicate a form. Compact clusters above tables/lists usually indicate a toolbar or filter bar.
+- Image/icon/label/drop-zone clusters with upload wording or upload-like events usually indicate an upload component, even when Axure did not use a native upload control.
+- Hidden dynamic panels with overlays, close icons, and show/hide actions usually indicate modals, drawers, popovers, confirmations, or generated information panels.
+- Repeater and table item templates must be mapped as full row/list components, preserving checkboxes, radios, status icons, avatars, row actions, and selected states.
+
 ## Asset Implementation
 
 Use real non-icon assets from the Axure export:

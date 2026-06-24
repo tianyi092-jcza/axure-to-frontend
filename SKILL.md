@@ -26,11 +26,12 @@ python <skill-dir>/scripts/inspect_axure_export.py <axure-export-dir> --out axur
 4. Read `references/axure-official-capabilities.md` to understand the Axure capability surface that must be checked.
 5. Read `references/axure-analysis.md` before detailed analysis.
 6. Read `references/frontend-mapping.md` before project initialization and implementation.
-7. Present a concise analysis summary and ask the user to confirm conversion scope and restoration depth before project initialization.
-8. Initialize the selected frontend project in the current working directory unless the user chose another output directory.
-9. Use the installed superpowers skill to create a conversion task checklist from the Axure analysis. The checklist must include official capability coverage, page implementation, component mapping, interaction implementation, responsive behavior, and validation tasks.
-10. Implement the project pages and code. Generate only the frontend project and page code, plus a `README.md`.
-11. Verify the result with local build/typecheck and, when practical, browser screenshots or manual interaction checks.
+7. After executable extraction, build a semantic component model as described in "Semantic Component Inference" below. This must happen before route planning or UI implementation.
+8. Present a concise analysis summary and ask the user to confirm conversion scope and restoration depth before project initialization.
+9. Initialize the selected frontend project in the current working directory unless the user chose another output directory.
+10. Use the installed superpowers skill to create a conversion task checklist from the Axure analysis. The checklist must include official capability coverage, page implementation, component mapping, interaction implementation, responsive behavior, and validation tasks.
+11. Implement the project pages and code. Generate only the frontend project and page code, plus a `README.md`.
+12. Verify the result with local build/typecheck and, when practical, browser screenshots or manual interaction checks.
 
 ## Restoration Priority Layers
 
@@ -136,6 +137,24 @@ const inventory = walk(page.page.diagram);
 ```
 
 If a selected stack uses TypeScript or Python tooling, the extractor may be wrapped in that tooling, but the core rule remains: execute the Axure page data script, capture the real object graph, and recursively inspect it before implementation.
+
+## Semantic Component Inference
+
+Axure widget types are authoring primitives, not frontend component truth. The conversion must infer product-level components from structure, repeated layout, labels, events, and route behavior before mapping to React/Vue/component-library code.
+
+- Treat `friendlyType` as evidence, not a one-to-one mapping. Direct mappings are valid for clear controls such as text boxes, text areas, droplists, checkboxes, radios, tables, and repeaters, but many product controls are composed from labels, rectangles, images, groups, and dynamic panels.
+- Any widget with an `interactionMap` is an interactive candidate even if it is a label, rectangle, image, vector shape, icon, line, or group. Parse its event cases and action sequence before deciding whether it is a button, icon button, menu item, tab, table row action, link, upload trigger, modal close control, or state toggle.
+- Build a route graph from sitemap pages and `linkWindow` actions. When multiple pages repeat the same header/sidebar/menu chrome and menu items link to other pages, implement that repeated chrome as a shared application layout with a route outlet. The frontend route should update the main content area; do not duplicate the menu as separate page content just because Axure copied it onto every page.
+- Detect state-variant pages by repeated visual chrome, repeated main content, reciprocal links, and names such as expanded/collapsed, default, no-share, video, share-screen, timeline, or similar state labels. Prefer component state for state variants unless the user explicitly wants Axure filenames preserved as routes.
+- Infer menus from repeated vertical or horizontal groups of icon/text items, selected states, hover states, collapse/expand controls, and `linkWindow` targets. A copied Axure menu across pages should become a framework `Layout`/`Sider`/`Menu` or equivalent app shell component.
+- Infer buttons from clickable labels, rectangles, image groups, icon+text groups, and styled shapes. Preserve the visible text from the exported page, not the event action name. If a button-looking label opens a panel or route, implement it as a button or link according to product behavior.
+- Infer forms from clustered label/input/select/checkbox/radio/button widgets inside a panel or page region. Convert the cluster into library form items, preserving labels, placeholders, defaults, required marks, hints, validation states, submit/cancel actions, and local panel behavior.
+- Infer toolbars and filter bars from compact label/input/select/date/button groups above tables, lists, calendars, or dashboards. Convert them into toolbar/filter components instead of loose positioned labels.
+- Infer upload components from a visible drop area, image/icon placeholder, upload wording, file hints, or event-bearing label/icon groups. Implement with the selected library's upload component when behavior is upload-like, even if Axure used only a label, image, or rectangle.
+- Infer tabs, segmented controls, and setting categories from repeated selectable labels/groups that set selected state or switch dynamic panel states. Implement them as tabs, segmented controls, menu groups, or side settings navigation according to layout.
+- Infer dialogs, drawers, popovers, and confirmation panels from hidden dynamic panels, overlays, fixed positioning, bring-to-front actions, close icons, and show/hide actions. Restore the full hidden subtree and interaction behavior.
+- Infer data tables and selectable lists from repeaters/tables plus row templates. Preserve selection controls, row actions, avatars/status icons, data bindings, and template layout, not just textual columns.
+- Keep an "Axure widget -> semantic component -> frontend component" mapping note in the generated README for all inferred components that are not direct one-to-one mappings.
 
 ## Mandatory User Decision Gates
 

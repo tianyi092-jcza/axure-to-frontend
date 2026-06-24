@@ -16,6 +16,7 @@
 - 执行 Axure `data.js`，递归抽取动态面板、中继器、表格、复选框、按钮和交互目标。
 - 分析后选择“静态可见页面还原”或“完整原型还原”。
 - 识别 Axure 中只表示页面状态的页面，例如左侧菜单展开态，并合并为组件状态。
+- 对非标准 Axure 组合控件做语义识别，例如复制到多页的菜单、用 label 做的按钮、表单/工具栏组合、上传区域、弹窗和隐藏面板。
 
 ### 目录结构
 
@@ -79,6 +80,8 @@ Codex 会询问必要选项，例如：
 
 这样可以避免靠肉眼阅读压缩后的 `data.js` 或只用关键词搜索猜结构，并能把隐藏动态面板、中继器模板、表格单元格、复选框和按钮文字作为正式还原对象。
 
+同时，Axure 的元件类型不是前端组件的一一映射。skill 会根据重复布局、页面跳转、事件脚本、选中状态、标签文字和控件组合，先推断产品语义，再映射为前端组件。例如：多页复制的菜单会被识别为共享应用外壳，带点击事件的 label/矩形会被识别为按钮或菜单项，标签+输入框+下拉框会被识别为表单或筛选工具栏，上传提示区会被识别为上传组件。
+
 ### 校验
 
 如本地有 Codex skill 校验脚本，可运行：
@@ -107,6 +110,7 @@ The skill guides Codex through analyzing an Axure export and generating a fronte
 - Executable Axure `data.js` extraction for dynamic panels, repeaters, tables, checkboxes, buttons, and interaction targets.
 - A choice between static visible-page restoration and full prototype restoration after analysis.
 - Route/state consolidation for Axure pages that represent UI states, such as expanded side menus.
+- Semantic inference for non-standard Axure compositions, including copied menus, label-based buttons, form/toolbar clusters, upload areas, dialogs, and hidden panels.
 
 ### Skill Structure
 
@@ -169,6 +173,8 @@ After analysis, the skill asks which restoration depth to use:
 The most important implementation rule is to execute each priority page's Axure `files/<page>/data.js` in a controlled local JavaScript environment, capture the object passed to `$axure.loadCurrentPage`, and recursively extract the real widget graph.
 
 This avoids guessing from compressed `data.js` text or keyword search alone, and makes hidden dynamic panels, repeater templates, table cells, checkboxes, and button labels first-class restoration targets.
+
+Axure widget types are not one-to-one frontend components. The skill first infers product semantics from repeated layout, page jumps, event scripts, selected states, visible labels, and control clusters, then maps those semantics to frontend components. For example, copied menus across pages become a shared app shell, clickable labels/rectangles become buttons or menu items, label+input+select clusters become forms or filter toolbars, and upload prompt regions become upload components.
 
 ### Validation
 
