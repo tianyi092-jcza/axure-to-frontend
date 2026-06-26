@@ -8,6 +8,10 @@ const exportRoot = path.resolve(process.argv[3] || path.resolve(root, "..", "yua
 const ledgersDir = path.join(root, "axure-ledgers");
 const pagesDir = path.join(ledgersDir, "pages");
 const analysis = JSON.parse(fs.readFileSync(path.join(root, "axure-analysis.json"), "utf8"));
+const architecture = analysis.architecture || {};
+const architectureProfile = architecture.primary || "mixed-or-uncertain";
+const architectureConfidence = architecture.confidence || "unknown";
+const isDynamicPanelApp = architectureProfile === "single-page-dynamic-panel-app";
 const entryPageKey = (analysis.pages || []).some((page) => page.page_key === "mainframe") ? "mainframe" : "create-meeting";
 const targetTheme = process.env.AXURE_TARGET_THEME || process.argv[4] || "dark";
 const viewportArg = process.env.AXURE_REFERENCE_VIEWPORT || process.argv[5] || "1895x1080";
@@ -728,6 +732,80 @@ function interactionContractForPage(page) {
 }
 
 const interactionContractLedger = pageInventory.map(interactionContractForPage);
+const dynamicPanelNavigationLedger = {
+  profile: architectureProfile,
+  applies: isDynamicPanelApp,
+  rule:
+    "For single-page-dynamic-panel-app profiles, menu/button/tab sources with setPanelState actions must become local frontend panel-state transitions, not route or linkFrame navigation.",
+  sources: interactionContractLedger.flatMap((page) =>
+    page.sources.flatMap((source) =>
+      source.events.flatMap((event) =>
+        event.cases.flatMap((caseItem) =>
+          caseItem.actions
+            .filter((action) => action.intent === "set-panel-state")
+            .map((action) => ({
+              pageKey: page.pageKey,
+              route: page.route,
+              sourceId: source.sourceId,
+              sourceScriptId: source.sourceScriptId,
+              sourceType: source.sourceType,
+              sourceText: source.sourceText,
+              sourceLabel: source.sourceLabel,
+              bounds: source.bounds,
+              initiallyVisible: source.initiallyVisible,
+              htmlHidden: source.htmlHidden,
+              hiddenInteractionTarget: source.hiddenInteractionTarget,
+              nearestDynamicPanel: source.nearestDynamicPanel,
+              eventKey: event.eventKey,
+              caseIndex: caseItem.caseIndex,
+              actionIndex: action.actionIndex,
+              description: action.description,
+              targetPanels: action.objectTargets,
+              validation:
+                "Click the visible source label/icon/button and assert the target panel switches to the Axure state named in the action description; previous inactive states must be hidden.",
+            })),
+        ),
+      ),
+    ),
+  ),
+};
+const architectureTasks = [
+  {
+    id: "AX-002A",
+    phase: "architecture",
+    title: "Confirmed Architecture Strategy",
+    evidence: ["axure-analysis.json architecture", "references/prototype-architecture-profiles.md"],
+    scope: `confirmed profile ${architectureProfile} (${architectureConfidence} confidence) drives route/menu/panel task strategy`,
+    acceptance: [
+      "confirmed or auto-approved architecture profile is recorded in superpower-workflow.json",
+      "task plan uses the selected profile's navigation strategy instead of a generic menu strategy",
+    ],
+    validation: ["inspect axure-analysis.json architecture", "inspect task-plan.md architecture section"],
+  },
+];
+if (isDynamicPanelApp) {
+  architectureTasks.push({
+    id: "AX-004A",
+    phase: "interaction",
+    title: "Dynamic Panel Menu State Machine",
+    evidence: [
+      "dynamic-panel-navigation-ledger.json",
+      "interaction-contract-ledger.json",
+      "state-variant-ledger.json",
+      "page ledgers",
+      "prototype-architecture-profiles.md",
+    ],
+    scope:
+      "map menu/button/tab setPanelState actions to local frontend panel state; transfer click handlers from invisible groups to visible labels/icons/buttons; preserve nested panel state independently",
+    acceptance: [
+      "initial render shows only the Axure default main panel state",
+      "every visible menu item with a setPanelState source changes the matching target panel state",
+      "inactive panel-state descendants do not leak into the page layout",
+      "dynamic-panel menu clicks are not replaced by route navigation or linkFrame behavior unless Axure used linkWindow/linkFrame",
+    ],
+    validation: ["click each dynamic-panel menu item", "assert target state content appears", "assert previous state content is hidden"],
+  });
+}
 const superpowerTasks = [
   {
     id: "AX-001",
@@ -747,6 +825,7 @@ const superpowerTasks = [
     acceptance: ["every page has counts", "every interaction-bearing widget appears in interaction-contract-ledger.json"],
     validation: ["inspect axure-ledgers/superpower-workflow.json", "inspect axure-ledgers/interaction-contract-ledger.json"],
   },
+  ...architectureTasks,
   {
     id: "AX-003",
     phase: "renderer",
@@ -851,6 +930,8 @@ const superpowerWorkflow = {
     },
   ],
   evidenceSummary: {
+    architectureProfile,
+    architectureConfidence,
     pages: pageInventory.length,
     mustImplement: elementCoverageLedger.length,
     interactionSources: interactionSourceCount,
@@ -863,6 +944,7 @@ const superpowerWorkflow = {
     pageInventory: "axure-ledgers/page-inventory.json",
     routeGraph: "axure-ledgers/route-graph.json",
     sharedChrome: "axure-ledgers/shared-chrome-ledger.json",
+    dynamicPanelNavigation: "axure-ledgers/dynamic-panel-navigation-ledger.json",
     data: "axure-ledgers/data-ledger.json",
     interactions: "axure-ledgers/interaction-ledger.json",
     interactionContract: "axure-ledgers/interaction-contract-ledger.json",
@@ -895,6 +977,12 @@ const taskPlan = `# Axure Restoration Task Plan
 - Route strategy: Axure-filename-close routes, with / mapped to create-meeting
 - Responsive target: desktop web, reference viewport ${referenceViewport.width}x${referenceViewport.height}
 - Data handling: local typed prototype data from Axure ledgers
+- Architecture profile: ${architectureProfile} (${architectureConfidence})
+- Architecture rule: confirmed profile controls menu, route, inline-frame, and dynamic-panel state restoration; dynamic-panel app menus with setPanelState must update local panel state instead of becoming route/linkFrame navigation.
+
+## Architecture Evidence
+
+${(architecture.candidates?.[0]?.evidence || []).map((item) => `- ${item}`).join("\n") || "- No architecture evidence recorded."}
 
 ## Task Manifest
 
@@ -966,6 +1054,7 @@ const readme = `# AImeet Axure Restoration
 - Source Axure export: ${exportRoot}
 - Entry page: create-meeting.html
 - Reference viewport: ${referenceViewport.width}x${referenceViewport.height}
+- Architecture profile: ${architectureProfile} (${architectureConfidence})
 
 ## Restoration Scope
 
@@ -999,6 +1088,7 @@ ${routeGraph.routes
 - Text boxes, selects, checkboxes, images, repeaters, buttons, and hidden dynamic panels are mapped from source evidence.
 - Axure repeaters are treated as framework List/ListItem data components by default, with Table/Grid used only when source evidence supports that mapping.
 - Repeated left icon rails are consolidated into shared chrome; slot geometry and linkWindow targets come from \`shared-chrome-ledger.json\`.
+- Confirmed architecture profile controls navigation restoration: repeated-shell profiles use shared route chrome, inline-frame profiles use targeted \`linkFrame\` outlets, and dynamic-panel app profiles use local \`setPanelState\` state machines for menus.
 - Zero-size or transparent interactive Axure groups are expanded or transferred to their visible slot bounds so their events remain clickable.
 - SVG-only UI icons are replaced with framework icons inferred from nearby text, link targets, and stable shared-menu slot order.
 - Interaction sources and their action targets are auditable in \`axure-ledgers/interaction-contract-ledger.json\`.
@@ -1038,6 +1128,7 @@ ensureDir(ledgersDir);
 writeJson("page-inventory.json", pageInventory);
 writeJson("route-graph.json", routeGraph);
 writeJson("shared-chrome-ledger.json", sharedChromeLedger);
+writeJson("dynamic-panel-navigation-ledger.json", dynamicPanelNavigationLedger);
 writeJson("state-variant-ledger.json", stateVariantLedger);
 writeJson("asset-ledger.json", assetLedger);
 writeJson("element-coverage-ledger.json", elementCoverageLedger);

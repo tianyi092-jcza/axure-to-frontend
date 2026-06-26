@@ -39,7 +39,7 @@ Follow this contract for every conversion:
 
 1. **Decision phase**: ask only the required user choices that affect architecture, scope, restoration depth, output, and validation.
 2. **Evidence phase**: inspect Axure files, execute page data scripts, and capture the rendered visual baseline. Produce source-derived ledgers before coding.
-3. **Architecture hook**: show the detected prototype architecture profile, evidence, confidence, and ask the user to confirm or override it. Stop until the user answers unless the user requested an automatic full run.
+3. **Architecture hook**: show the detected prototype architecture profile, evidence, confidence, and ask the user to confirm or override it. Stop until the user answers unless the user requested an automatic full run. Record the confirmed profile and make it drive every downstream task; do not let task generation silently fall back to a generic route/menu strategy.
 4. **Tasking hook**: show the evidence summary, generated ledger locations, interaction-contract count, and ask whether to let the superpowers process generate/refresh the task plan. Stop until the user answers.
 5. **Tasking phase**: use the superpowers process to turn ledgers into a detailed task plan with dependencies and acceptance checks. Produce a task manifest the user can inspect.
 6. **Execution hook**: show the task manifest and ask whether to execute all tasks, selected tasks, or stop for review. Stop until the user answers.
@@ -51,6 +51,8 @@ Follow this contract for every conversion:
 Core restoration priority is fixed for this skill: framework colors/styles may follow the selected frontend library, but source layout, prototype data, events/page interactions, and framework-icon replacement are blocking requirements. Do not accept a run when data is missing, a modal/popover/drawer uses stale Axure page coordinates instead of exported fixed/overlay positioning, interaction targets are unreachable, or generic SVG icons become blank/placeholder blocks.
 
 When an Axure export uses a single shell page with an `inlineFrame` to switch feature pages, treat the shell as the frontend entry page and the frame as an embedded route outlet. Recover `linkFrame` actions with both the target page and target frame object id; a `linkFrame` menu/button click is an interaction contract, not a decorative selection effect.
+
+When an Axure export uses a single page or main page with dynamic panels to switch functional modules, treat the main dynamic panel as local frontend state. Recover menu/button `setPanelState` actions with source widget ids, visible child label/icon click targets, target panel ids, and target state names. A menu click that only changes selected styling or does nothing is an interaction failure.
 
 For large prototypes, never try to restore everything in one pass. Process shared chrome first, then pages in dependency order, then hidden states/interactions, then cross-page flows.
 
@@ -139,7 +141,8 @@ Before implementation, create source-derived evidence. At minimum:
 2. Route graph from sitemap and `linkWindow` actions.
 3. Shared chrome inventory: topbar, sidebar, menu labels, icons, selected states, collapse/expand variants, slot geometry, zero-size/transparent interaction groups, and link targets.
 4. Inline-frame inventory when present: frame widget ids, default target page, frame bounds, target object ids, `linkFrame` sources, and embedded page route/component mapping.
-5. For every selected page/state:
+5. Dynamic-panel app inventory when present: main panel candidates, menu/source widgets, visible child label/icon proxy targets, `setPanelState` actions, target panel ids, target state names, default state, nested panel states, and validation click flows.
+6. For every selected page/state:
    - Visual baseline ledger: rendered screenshot viewport, user-selected target theme, source color/contrast notes, app shell, major regions, dominant assets, initial visibility, and scroll model.
    - Code structure ledger: ids, scriptIds, Axure types, parent paths, visibility, events, target widgets.
    - Layout ledger: panel bounds, columns, rows, repeated item geometry, y-order, scroll model.

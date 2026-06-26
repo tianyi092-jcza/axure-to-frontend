@@ -51,6 +51,7 @@ Produce analysis artifacts before coding:
 - `route-graph.json` or Mermaid: linkWindow and linkFrame actions, candidate frontend routes, and inline-frame target pages;
 - `shared-chrome-ledger.json`: repeated header/sidebar/menu/tabs/shell, including rail bounds, slot bounds/order, copied group ids, link targets, selected-state evidence, and icon-role evidence;
 - `inline-frame-ledger.json` when applicable: frame widget ids, default embedded page, frame bounds, target object ids, source widgets with linkFrame, and embedded component/route mapping;
+- `dynamic-panel-navigation-ledger.json` when applicable: main panel candidates, menu/button/tab sources with setPanelState, visible child proxy targets, target panel ids, target state names/indexes, nested panel dependencies, and validation click flows;
 - `state-variant-ledger.json`: pages that are likely UI states rather than routes;
 - `asset-ledger.json`: product/content assets, generic icons, missing references.
 - `visual-baseline-ledger.json` or per-page visual baseline notes: reference viewport screenshots, user-selected target theme, source color/contrast notes, app shell, major regions, dominant assets, initial visibility, and scroll model.
@@ -79,20 +80,23 @@ Stop at `SP-HOOK-01 tasking` before task generation or refresh:
 Generate `task-plan.md` from the evidence. Use small, dependency-aware tasks:
 
 1. Project initialization and build wiring.
-2. Visual baseline, selected theme tokens, and source contrast notes.
-3. Shared app shell and route outlet, including repeated sidebar/topbar consolidation.
-4. Shared assets and dominant visual assets.
-5. Shared component primitives proven by multiple pages.
-6. Page visual skeleton restoration, one page/state at a time.
-7. Page element coverage reconciliation against `mustImplement` rows.
-8. Page visible control/data restoration.
-9. Page component mapping fixes.
-10. Hidden panels/dialogs/drawers/popovers.
-11. Repeater/table data and templates.
-12. Page-internal interactions.
-13. Cross-page navigation.
-14. Responsive/scroll-model validation.
-15. README and validation report.
+2. Architecture strategy selected from `axure-analysis.json.architecture` and the user-confirmed profile.
+3. Visual baseline, selected theme tokens, and source contrast notes.
+4. Shared app shell, route outlet, inline-frame outlet, or dynamic-panel app shell according to the confirmed profile.
+5. Route map, embedded frame map, or dynamic-panel state map according to the confirmed profile.
+6. Shared assets and dominant visual assets.
+7. Shared component primitives proven by multiple pages.
+8. Page visual skeleton restoration, one page/state at a time.
+9. Page element coverage reconciliation against `mustImplement` rows.
+10. Page visible control/data restoration.
+11. Page component mapping fixes.
+12. Dynamic-panel menu state-machine tasks when the profile is `single-page-dynamic-panel-app`.
+13. Hidden panels/dialogs/drawers/popovers.
+14. Repeater/table data and templates.
+15. Page-internal interactions.
+16. Cross-page navigation.
+17. Responsive/scroll-model validation.
+18. README and validation report.
 
 After task generation, stop at `SP-HOOK-02 execution`:
 
@@ -152,6 +156,7 @@ Use these mappings:
 
 - One repeated chrome ledger -> shared shell tasks, with acceptance for covered source widgets, visible slot click areas, route navigation, active state, and framework icon replacement.
 - One inline-frame ledger -> shell outlet task plus linkFrame interaction task, with acceptance for default embedded content, targeted frame switching, retained shell chrome, and no duplicated feature-page shell.
+- One dynamic-panel navigation ledger -> dynamic-panel app shell/state-machine task plus menu setPanelState interaction task, with acceptance for visible menu item clicks, source state names, inactive state scoping, nested panel independence, and no route/linkFrame substitution.
 - One visual baseline ledger -> selected theme tokens, source contrast notes, shell geometry, major-region, dominant-asset, and scroll-model tasks.
 - One element coverage ledger -> per-page reconciliation tasks for initially visible widgets, controls, asset widgets, interaction sources, and hidden interaction targets.
 - One page visible-state ledger -> static page restoration task.
@@ -203,6 +208,7 @@ Every page task should check:
 - interaction target visibility and content.
 - shared chrome pages: one shared sidebar/topbar instance, no leaked duplicated source widgets, distinct non-generic framework icons, canonical collapsed/expanded menu evidence, no slot-index-invented modules, and clickable slots matching source or canonical `linkWindow`/`linkFrame` targets such as the system setting route.
 - inline-frame shells: default frame content appears inside the source frame bounds, feature-page clicks update the targeted frame, and embedded content remains interactive without replacing or duplicating the outer shell.
+- dynamic-panel apps: the initial default panel state is the only visible main-state content at load; clicking each source menu label/icon/button with a `setPanelState` action changes the matching panel state; inactive panel-state content does not leak; nested dynamic panels maintain independent state; no dynamic-panel menu click is replaced by route navigation unless Axure used `linkWindow`.
 
 Every interaction task should check:
 

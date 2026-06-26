@@ -11,6 +11,8 @@ Run `scripts/inspect_axure_export.py` first and read its `architecture` section.
 - `single-page-dynamic-panel-app`: one app page or a small number of entry pages use a main dynamic panel, nested dynamic panels, and `setPanelState` actions as functional modules.
 - `mixed-or-uncertain`: more than one pattern is present or the score gap is small. Ask the user to choose the primary profile and document exceptions.
 
+The selected profile is not informational. It is a task-generation input. Record the confirmed profile in `axure-ledgers/superpower-workflow.json`, `task-plan.md`, `README.md`, and validation notes. If the user confirms or overrides the profile, downstream tasks must follow that profile's navigation and menu strategy.
+
 Always keep shared low-level rules outside the profile: button/group event inheritance, hidden-state scoping, modal geometry, icon replacement, repeater/table extraction, data fidelity, and framework control mapping apply to every profile.
 
 ## Multi-Page Repeated Shell
@@ -83,6 +85,9 @@ Restoration strategy:
 - Keep the page containing the main menu and main dynamic panel as a single app route.
 - Model the main dynamic panel as local typed state or nested route state according to user preference, but preserve Axure behavior first.
 - Map menu clicks to `setPanelState` transitions. Do not replace them with `linkWindow` unless the Axure action is actually `linkWindow`.
+- Build a dynamic-panel navigation ledger before implementation. For every menu/button/tab candidate, capture source id/scriptId, visible child label/icon ids, trigger event, target panel id/scriptId, target state name/index, selected-state side effects, and whether the clickable source is hidden/zero-size.
+- Transfer events from invisible parent groups to the visible menu label/icon/button bounds. The visible menu item must be clickable even when Axure stored the event on a transparent group.
+- Implement a panel-state state machine for the main dynamic panel. The restored state key must come from Axure state names/ids, not invented route names.
 - Render only the active/default panel state initially. Inactive state descendants must be available for later state transitions but must not leak into the initial layout.
 - Preserve nested dynamic panel state independently. A parent panel switch must not accidentally reveal all child states.
 - Show/hide actions on side menus, feedback panels, personal-center panels, dialogs, and popovers remain show/hide behavior.
@@ -94,6 +99,8 @@ Blocking failures:
 - Losing `setPanelState` events on menu buttons or child labels/icons.
 - Converting panel state switches into unrelated browser routes.
 - Rendering inactive panel-state content as normal page content.
+- Treating the dynamic-panel menu as repeated route chrome or inline-frame navigation.
+- Generating menu items without a source `setPanelState` contract and then leaving clicks unimplemented.
 
 ## Mixed Exports
 
@@ -103,4 +110,3 @@ Some exports combine patterns: login/register pages may use `linkWindow`, a home
 - Treat login/register/start pages as entry routes.
 - Treat exceptional pages with their own local profile only when the evidence requires it.
 - Record the selected primary profile and exceptions in `axure-ledgers/superpower-workflow.json`, `task-plan.md`, and `README.md`.
-
