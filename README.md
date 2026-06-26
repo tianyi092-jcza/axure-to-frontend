@@ -166,3 +166,11 @@ Core principles:
 - Map components from evidence, not assumptions.
 - Restore interactions from Axure event/action models.
 - Validate with build checks and rendered screenshot/interaction comparison.
+
+## Recent Restoration Rules
+
+- Direct Axure controls must restore to the selected frontend framework's corresponding components, not static lookalikes.
+- Axure button, checkbox, and radio option-group evidence must be preserved as frontend group constraints such as Radio.Group, checkbox groups, segmented controls, tabs, or controlled button groups.
+- Axure repeaters default to framework List/ListItem restoration.
+- Repeaters with Axure wrap/grid enabled must restore as framework grid-list/list-grid components while preserving item width, height, wrap count, spacing, template controls, styles, and events.
+- Repeater template controls, including radio buttons and checkboxes, must remain operable framework controls with local state and Axure event wiring.

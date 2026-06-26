@@ -1,0 +1,248 @@
+.ax-page {
+  min-height: 100vh;
+  overflow: auto;
+  background: #000;
+}
+
+.ax-canvas {
+  position: relative;
+  margin: 0;
+  background: #000;
+  color: rgba(242, 242, 242, 0.95);
+}
+
+.ax-shared-side-nav {
+  position: absolute;
+  z-index: 900;
+  box-sizing: border-box;
+  background: rgba(18, 18, 18, 0.96);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ax-shared-nav-item {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: rgba(242, 242, 242, 0.72);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.ax-shared-nav-item:hover,
+.ax-shared-nav-item:focus-visible {
+  color: rgba(242, 242, 242, 0.96);
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.ax-shared-nav-item.is-active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.ax-shared-nav-item:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.ax-shared-nav-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.ax-widget {
+  line-height: 1.2;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ax-kind-checkbox,
+.ax-kind-radio {
+  white-space: nowrap;
+  word-break: normal;
+}
+
+.ax-widget.is-interactive {
+  cursor: pointer;
+}
+
+.ax-widget:not(.is-interactive):not(.ax-kind-input):not(.ax-kind-select):not(.ax-kind-checkbox):not(.ax-kind-radio):not(.ax-kind-iframe) {
+  pointer-events: none;
+}
+
+.ax-widget.is-interactive:hover {
+  outline: 1px solid rgba(255, 255, 255, 0.12);
+  outline-offset: -1px;
+}
+
+.ax-text {
+  display: block;
+  width: 100%;
+}
+
+.ax-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.ax-inline-frame {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+.ax-inline-frame.is-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(242, 242, 242, 0.58);
+  font-size: 12px;
+}
+
+.ax-inline-frame > .ax-page {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: transparent;
+}
+
+.ax-inline-frame > .ax-page > .ax-canvas {
+  min-height: 100%;
+}
+
+.ax-icon {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.ax-control,
+.ax-select {
+  width: 100%;
+  height: 100%;
+}
+
+.ax-control.ant-input,
+.ax-select .ant-select-selector {
+  min-height: 100%;
+  background: rgba(24, 24, 24, 0.96) !important;
+  border-color: rgba(242, 242, 242, 0.22) !important;
+  color: rgba(242, 242, 242, 0.92) !important;
+  box-shadow: none !important;
+}
+
+.ax-select .ant-select-selection-item,
+.ax-select .ant-select-arrow {
+  color: rgba(242, 242, 242, 0.92) !important;
+}
+
+.ax-choice,
+.ax-checkbox,
+.ax-radio {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  color: rgba(242, 242, 242, 0.92);
+  line-height: 1.2;
+}
+
+.ax-choice .ant-checkbox + span,
+.ax-choice .ant-radio + span {
+  white-space: nowrap;
+  padding-inline-end: 0;
+}
+
+.ax-choice .ant-checkbox-inner,
+.ax-choice .ant-radio-inner {
+  background: rgba(18, 18, 18, 0.9);
+  border-color: rgba(242, 242, 242, 0.28);
+}
+
+.ax-button {
+  width: 100%;
+  height: 100%;
+  padding: 0 8px;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  text-align: inherit;
+  white-space: nowrap;
+}
+
+.ax-button:hover,
+.ax-button:focus {
+  color: inherit !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.ax-repeater {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+  background: transparent;
+}
+
+.ax-repeater .ant-list-items {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: var(--ax-repeater-content-height, 100%);
+  min-height: 100%;
+}
+
+.ax-repeater .ant-list-item.ax-repeater-row {
+  position: absolute;
+  display: block;
+  align-items: center;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  color: rgba(242, 242, 242, 0.92);
+  border-bottom: 1px solid rgba(242, 242, 242, 0.08);
+}
+
+.ax-repeater-cell {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ax-repeater-part-radio,
+.ax-repeater-part-checkbox {
+  justify-content: center;
+}
+
+.ax-repeater-part-radio input,
+.ax-repeater-part-checkbox input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.ax-repeater-cell.is-background {
+  pointer-events: none;
+}
+
+.ax-repeater-cell.is-interactive {
+  cursor: pointer;
+}
+
+.ax-repeater-cell.is-interactive:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
