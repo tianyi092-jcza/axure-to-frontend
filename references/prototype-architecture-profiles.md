@@ -15,6 +15,28 @@ The selected profile is not informational. It is a task-generation input. Record
 
 Always keep shared low-level rules outside the profile: button/group event inheritance, hidden-state scoping, modal geometry, icon replacement, repeater/table extraction, data fidelity, and framework control mapping apply to every profile.
 
+## Profile Scope And Page Roles
+
+The profile describes the main app area, not necessarily the entire Axure export directory.
+
+Before task generation, classify pages into roles and show them to the user:
+
+- `inline-frame-shell-page`: owns the unique top/sidebar shell and an inline frame.
+- `inline-frame-target-page`: rendered inside the shell frame; it should not receive another global shell unless its source page genuinely contains local chrome.
+- `dynamic-panel-app-page`: owns the main menu and functional dynamic panels driven by `setPanelState`.
+- `repeated-shell-page`: repeated independent page with shared top/sidebar/menu and `linkWindow` navigation.
+- `entry-or-standalone-page`: login, register, welcome, guide, portal, or other independent page outside the main app structure.
+- `standalone-linked-page` / `standalone-page`: pages with local behavior that must be restored on their own terms.
+
+Task generation must use the profile scope:
+
+- For `single-shell-inline-frame`, apply the shell/outlet strategy only to shell pages and their embedded target pages. Do not force login/register/onboarding/guide pages into the frame strategy.
+- For `single-page-dynamic-panel-app`, apply the dynamic-panel state-machine strategy only to pages with the main app panel/menu evidence. Do not turn entry pages into panel states.
+- For `multi-page-repeated-shell`, apply shared chrome only to pages with repeated shell evidence. Do not wrap standalone pages in an invented app shell.
+- For `mixed-or-uncertain`, preserve local page profiles and ask the user which app area is primary.
+
+The generated evidence should include `architecture.scope` and `architecture.page_roles`. If those are missing, pause before tasking and inspect the export again; otherwise superpowers may create broad but wrong tasks.
+
 ## Multi-Page Repeated Shell
 
 Observed example: `yuanxing1.0`.
@@ -52,6 +74,7 @@ Detection evidence:
 - Shell menu/button events include `linkFrame` actions.
 - Frame targets are exported prototype pages such as feature pages.
 - Feature pages should not own the global topbar/sidebar.
+- The export may still include standalone login, registration, guide, welcome, or entry pages. These are route exceptions, not proof that the shell profile is wrong.
 
 Restoration strategy:
 
@@ -60,6 +83,7 @@ Restoration strategy:
 - Implement `linkFrame` by changing only the targeted frame content state. Do not convert it into a whole-browser route unless the source action is `linkWindow`.
 - Preserve the shell's frame bounds and default target page.
 - Feature pages render only functional content inside the outlet; duplicated feature-page chrome is suppressed unless the source target page genuinely contains local chrome.
+- Restore entry/standalone pages separately using their own route and interaction evidence. Do not place them inside the shell outlet unless Axure explicitly targets them into the frame.
 - Validate every `linkFrame` source against the target frame id and target page.
 
 Blocking failures:
@@ -91,6 +115,7 @@ Restoration strategy:
 - Render only the active/default panel state initially. Inactive state descendants must be available for later state transitions but must not leak into the initial layout.
 - Preserve nested dynamic panel state independently. A parent panel switch must not accidentally reveal all child states.
 - Show/hide actions on side menus, feedback panels, personal-center panels, dialogs, and popovers remain show/hide behavior.
+- Restore login/register/guide/portal pages as independent routes unless their source action is a `setPanelState` transition inside the main app page.
 - Validate primary menu items, submenu expand/collapse, panel-state switches, and nested panel-state switches.
 
 Blocking failures:

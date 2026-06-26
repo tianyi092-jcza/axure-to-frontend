@@ -47,6 +47,7 @@ Produce a short decision record:
 Produce analysis artifacts before coding:
 
 - `axure-analysis.json`: first-pass export scan;
+- `architecture-scope-ledger.json`: confirmed primary profile, profile applicability, page roles, main app pages, inline-frame shell/target pages, dynamic-panel app pages, repeated-shell pages, entry/standalone pages, and exception pages;
 - `page-inventory.json`: page list, HTML/data/style paths, assets, feature counts;
 - `route-graph.json` or Mermaid: linkWindow and linkFrame actions, candidate frontend routes, and inline-frame target pages;
 - `shared-chrome-ledger.json`: repeated header/sidebar/menu/tabs/shell, including rail bounds, slot bounds/order, copied group ids, link targets, selected-state evidence, and icon-role evidence;
@@ -81,22 +82,23 @@ Generate `task-plan.md` from the evidence. Use small, dependency-aware tasks:
 
 1. Project initialization and build wiring.
 2. Architecture strategy selected from `axure-analysis.json.architecture` and the user-confirmed profile.
-3. Visual baseline, selected theme tokens, and source contrast notes.
-4. Shared app shell, route outlet, inline-frame outlet, or dynamic-panel app shell according to the confirmed profile.
-5. Route map, embedded frame map, or dynamic-panel state map according to the confirmed profile.
-6. Shared assets and dominant visual assets.
-7. Shared component primitives proven by multiple pages.
-8. Page visual skeleton restoration, one page/state at a time.
-9. Page element coverage reconciliation against `mustImplement` rows.
-10. Page visible control/data restoration.
-11. Page component mapping fixes.
-12. Dynamic-panel menu state-machine tasks when the profile is `single-page-dynamic-panel-app`.
-13. Hidden panels/dialogs/drawers/popovers.
-14. Repeater/table data and templates.
-15. Page-internal interactions.
-16. Cross-page navigation.
-17. Responsive/scroll-model validation.
-18. README and validation report.
+3. Profile scope and page-role tasks: main app pages follow the confirmed profile, while entry/standalone exception pages keep local restoration rules.
+4. Visual baseline, selected theme tokens, and source contrast notes.
+5. Shared app shell, route outlet, inline-frame outlet, or dynamic-panel app shell according to the confirmed profile and profile scope.
+6. Route map, embedded frame map, or dynamic-panel state map according to each page role.
+7. Shared assets and dominant visual assets.
+8. Shared component primitives proven by multiple pages.
+9. Page visual skeleton restoration, one page/state at a time.
+10. Page element coverage reconciliation against `mustImplement` rows.
+11. Page visible control/data restoration.
+12. Page component mapping fixes.
+13. Dynamic-panel menu state-machine tasks when the page role is `dynamic-panel-app-page`.
+14. Hidden panels/dialogs/drawers/popovers.
+15. Repeater/table data and templates.
+16. Page-internal interactions.
+17. Cross-page navigation.
+18. Responsive/scroll-model validation.
+19. README and validation report.
 
 After task generation, stop at `SP-HOOK-02 execution`:
 
@@ -154,6 +156,7 @@ If a task mentions more than one page and is not shared infrastructure, it is pr
 
 Use these mappings:
 
+- One architecture scope ledger -> architecture strategy and page-role tasks, with acceptance that the main app profile is applied only to scoped pages and entry/standalone pages are not forced into inline-frame, dynamic-panel, or repeated-shell behavior.
 - One repeated chrome ledger -> shared shell tasks, with acceptance for covered source widgets, visible slot click areas, route navigation, active state, and framework icon replacement.
 - One inline-frame ledger -> shell outlet task plus linkFrame interaction task, with acceptance for default embedded content, targeted frame switching, retained shell chrome, and no duplicated feature-page shell.
 - One dynamic-panel navigation ledger -> dynamic-panel app shell/state-machine task plus menu setPanelState interaction task, with acceptance for visible menu item clicks, source state names, inactive state scoping, nested panel independence, and no route/linkFrame substitution.

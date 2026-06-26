@@ -27,6 +27,14 @@ FEATURE_PATTERNS = {
     "adaptive": r"adaptiveViews|adaptiveStyles|viewOverride|sketchFactor",
     "advanced_actions": r"addFilter|removeFilter|addSort|removeSort|setCurrentPage|setItemsPerPage|addRows|updateRows|deleteRows|markRows|unmarkRows|fireEvent|raiseEvent|setAdaptiveView|applyStyle|setOpacity|setImage",
 }
+ENTRY_PAGE_PATTERN = re.compile(
+    r"(login|log[_-]?in|signin|sign[_-]?in|register|signup|sign[_-]?up|welcome|guide|intro|onboard|landing|portal|guest|登录|登陆|注册|欢迎|引导|入口|门户)",
+    flags=re.IGNORECASE,
+)
+
+
+def page_identity(page: dict) -> str:
+    return f"{page.get('html', '')} {page.get('page_key', '')}".lower()
 
 
 def read_text(path: Path) -> str:
@@ -82,6 +90,122 @@ def repeated_link_signature(page_links: dict[str, list[str]]) -> dict:
     return {"count": count, "targets": list(targets)}
 
 
+def read_page_data_text(page: dict) -> str:
+    if not page.get("data_js"):
+        return ""
+    return read_text(Path(page["root_path"]) / page["data_js"])
+
+
+def page_role_evidence(page: dict, data_text: str, shared_targets: set[str]) -> tuple[str, str | None, list[str]]:
+    counts = page["feature_counts"]
+    html = page["html"]
+    links = set(page.get("link_targets") or [])
+    link_frame_hits = count_regex(data_text, r"linkFrame")
+    set_panel_hits = count_regex(data_text, r"setPanelState|panelsToStates")
+    is_entry = bool(ENTRY_PAGE_PATTERN.search(page_identity(page)))
+    evidence: list[str] = []
+
+    if counts.get("inline_frame", 0) > 0 or link_frame_hits > 0:
+        evidence.append(f"{counts.get('inline_frame', 0)} inlineFrame/iframe hits")
+        if link_frame_hits:
+            evidence.append(f"{link_frame_hits} linkFrame action hits")
+        return "inline-frame-shell-page", "single-shell-inline-frame", evidence
+
+    if is_entry and set_panel_hits <= 3 and counts.get("dynamic_panel", 0) < 12:
+        evidence.append("page name suggests login/register/welcome/guide/portal entry flow")
+        if counts.get("dynamic_panel", 0):
+            evidence.append(f"{counts.get('dynamic_panel', 0)} local dynamic-panel hits treated as page-local behavior")
+        if set_panel_hits:
+            evidence.append(f"{set_panel_hits} local setPanelState hits treated as page-local behavior")
+        return "entry-or-standalone-page", None, evidence
+
+    if set_panel_hits > 0 or counts.get("dynamic_panel", 0) >= 4:
+        evidence.append(f"{counts.get('dynamic_panel', 0)} dynamic-panel hits")
+        if set_panel_hits:
+            evidence.append(f"{set_panel_hits} setPanelState hits")
+        return "dynamic-panel-app-page", "single-page-dynamic-panel-app", evidence
+
+    if shared_targets and len(links.intersection(shared_targets)) >= max(2, min(4, len(shared_targets))):
+        evidence.append(f"shares {len(links.intersection(shared_targets))} repeated navigation targets")
+        return "repeated-shell-page", "multi-page-repeated-shell", evidence
+
+    if links:
+        evidence.append(f"{len(links)} outgoing page links")
+        return "standalone-linked-page", None, evidence
+
+    evidence.append(f"{html} has no strong app-shell evidence")
+    return "standalone-page", None, evidence
+
+
+def build_architecture_scope(
+    primary: str,
+    pages: list[dict],
+    page_links: dict[str, list[str]],
+    page_roles: list[dict],
+    repeated_signature: dict,
+) -> dict:
+    role_by_html = {role["html"]: role for role in page_roles}
+    known_html = {page["html"] for page in pages}
+    shell_pages = [role["html"] for role in page_roles if role["role"] == "inline-frame-shell-page"]
+    embedded_targets = sorted(
+        {
+            target
+            for shell in shell_pages
+            for target in page_links.get(shell, [])
+            if target in known_html
+        }
+    )
+    for target in embedded_targets:
+        role = role_by_html.get(target)
+        if role and role["role"] in {"standalone-page", "standalone-linked-page", "entry-or-standalone-page"}:
+            role["role"] = "inline-frame-target-page"
+            role["local_profile"] = "single-shell-inline-frame-target"
+            role["evidence"].append("targeted by a shell linkFrame/link action and should render inside the shell outlet")
+
+    dynamic_pages = [role["html"] for role in page_roles if role["role"] == "dynamic-panel-app-page"]
+    repeated_pages = [role["html"] for role in page_roles if role["role"] == "repeated-shell-page"]
+    entry_pages = [
+        role["html"]
+        for role in page_roles
+        if role["role"] in {"entry-or-standalone-page", "standalone-linked-page", "standalone-page"}
+        and role["html"] not in embedded_targets
+    ]
+
+    if primary == "single-shell-inline-frame":
+        applies_to = sorted(set(shell_pages + embedded_targets))
+        main_app_pages = shell_pages
+        description = "Only shell pages with inlineFrame/linkFrame and their embedded target pages use the inline-frame profile."
+    elif primary == "single-page-dynamic-panel-app":
+        applies_to = sorted(set(dynamic_pages))
+        main_app_pages = dynamic_pages
+        description = "Only dynamic-panel app pages use the setPanelState local-state profile; entry/standalone pages keep their own route behavior."
+    elif primary == "multi-page-repeated-shell":
+        applies_to = sorted(set(repeated_pages))
+        main_app_pages = repeated_pages
+        description = "Only pages sharing the repeated navigation shell use the shared-shell profile."
+    else:
+        applies_to = sorted({role["html"] for role in page_roles if role.get("local_profile")})
+        main_app_pages = applies_to
+        description = "Mixed export; apply local profiles by page role instead of forcing one strategy across the directory."
+
+    all_pages = [page["html"] for page in pages]
+    exceptions = [html for html in all_pages if html not in set(applies_to)]
+    return {
+        "profile_scope_rule": "The primary profile describes the main app area, not necessarily every exported page.",
+        "primary_profile_applies_to": applies_to,
+        "main_app_pages": main_app_pages,
+        "inline_frame_shell_pages": shell_pages,
+        "inline_frame_target_pages": embedded_targets,
+        "dynamic_panel_app_pages": dynamic_pages,
+        "repeated_shell_pages": repeated_pages,
+        "entry_or_standalone_pages": entry_pages,
+        "exception_pages": exceptions,
+        "not_entire_export": bool(exceptions),
+        "description": description,
+        "repeated_signature_targets": repeated_signature.get("targets", []),
+    }
+
+
 def classify_architecture(pages: list[dict], page_links: dict[str, list[str]]) -> dict:
     page_count = len(pages)
     inline_pages = [page for page in pages if page["feature_counts"].get("inline_frame", 0) > 0]
@@ -91,13 +215,14 @@ def classify_architecture(pages: list[dict], page_links: dict[str, list[str]]) -
     total_events = sum(page["feature_counts"].get("events", 0) for page in pages)
     repeated_signature = repeated_link_signature(page_links)
 
+    data_text_by_html = {page["html"]: read_page_data_text(page) for page in pages}
     link_frame_pages = [
         page for page in pages
-        if page["data_js"] and count_regex(read_text(Path(page["root_path"]) / page["data_js"]), r"linkFrame") > 0
+        if count_regex(data_text_by_html.get(page["html"], ""), r"linkFrame") > 0
     ]
     set_panel_state_pages = [
         page for page in pages
-        if page["data_js"] and count_regex(read_text(Path(page["root_path"]) / page["data_js"]), r"setPanelState|panelsToStates") > 0
+        if count_regex(data_text_by_html.get(page["html"], ""), r"setPanelState|panelsToStates") > 0
     ]
 
     candidates = []
@@ -155,10 +280,26 @@ def classify_architecture(pages: list[dict], page_links: dict[str, list[str]]) -
     if candidates[0]["score"] < 85 and len(candidates) > 1 and candidates[0]["score"] - candidates[1]["score"] < 12:
         primary = "mixed-or-uncertain"
         confidence = "low"
+    shared_targets = set(repeated_signature.get("targets") or [])
+    page_roles = []
+    for page in pages:
+        role, local_profile, evidence = page_role_evidence(page, data_text_by_html.get(page["html"], ""), shared_targets)
+        page_roles.append({
+            "html": page["html"],
+            "page_key": page["page_key"],
+            "role": role,
+            "local_profile": local_profile,
+            "feature_counts": page["feature_counts"],
+            "link_targets": page.get("link_targets", []),
+            "evidence": evidence,
+        })
+    scope = build_architecture_scope(primary, pages, page_links, page_roles, repeated_signature)
     return {
         "primary": primary,
         "confidence": confidence,
         "candidates": candidates,
+        "scope": scope,
+        "page_roles": page_roles,
         "requires_user_confirmation": True,
         "profiles": [
             "multi-page-repeated-shell",

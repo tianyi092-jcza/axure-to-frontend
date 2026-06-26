@@ -11,6 +11,15 @@ const analysis = JSON.parse(fs.readFileSync(path.join(root, "axure-analysis.json
 const architecture = analysis.architecture || {};
 const architectureProfile = architecture.primary || "mixed-or-uncertain";
 const architectureConfidence = architecture.confidence || "unknown";
+const architectureScope = architecture.scope || {
+  profile_scope_rule: "Legacy analysis did not include scoped page roles; rerun inspect_axure_export.py to avoid whole-directory profile assumptions.",
+  primary_profile_applies_to: [],
+  main_app_pages: [],
+  entry_or_standalone_pages: [],
+  exception_pages: [],
+  not_entire_export: false,
+};
+const architecturePageRoles = Array.isArray(architecture.page_roles) ? architecture.page_roles : [];
 const isDynamicPanelApp = architectureProfile === "single-page-dynamic-panel-app";
 const entryPageKey = (analysis.pages || []).some((page) => page.page_key === "mainframe") ? "mainframe" : "create-meeting";
 const targetTheme = process.env.AXURE_TARGET_THEME || process.argv[4] || "dark";
@@ -470,6 +479,18 @@ function assetExists(assetRef) {
   return fs.existsSync(path.join(exportRoot, normalized));
 }
 
+function architectureRoleForPage(page) {
+  return (
+    architecturePageRoles.find((role) => role.page_key === page.page_key || role.html === page.html) || {
+      html: page.html,
+      page_key: page.page_key,
+      role: "unknown",
+      local_profile: null,
+      evidence: ["architecture.page_roles missing; rerun the first-pass inspector"],
+    }
+  );
+}
+
 refreshPageLedgers();
 
 const pageLedgers = new Map(
@@ -478,6 +499,7 @@ const pageLedgers = new Map(
 
 const pageInventory = analysis.pages.map((page) => {
   const ledger = pageLedgers.get(page.page_key);
+  const architectureRole = architectureRoleForPage(page);
   return {
     pageName: ledger.pageName,
     html: page.html,
@@ -486,11 +508,28 @@ const pageInventory = analysis.pages.map((page) => {
     dataJs: page.data_js,
     stylesCss: page.styles_css,
     pageType: page.page_key.startsWith("meeting-") ? "meeting-flow-or-state" : "main-page",
+    architectureRole: architectureRole.role,
+    localArchitectureProfile: architectureRole.local_profile,
+    architectureEvidence: architectureRole.evidence || [],
     counts: ledger.counts,
     featureCounts: page.feature_counts,
     outgoing: page.link_targets,
   };
 });
+
+const architectureScopeLedger = {
+  primaryProfile: architectureProfile,
+  confidence: architectureConfidence,
+  scope: architectureScope,
+  pageRoles: architecturePageRoles,
+  rule:
+    "Apply the confirmed profile only to scoped main app pages. Entry, login, register, welcome, guide, portal, and standalone pages keep local route/component behavior unless Axure explicitly targets them into the main app shell or panel.",
+  validation: [
+    "Task plan names the main app pages for the confirmed profile.",
+    "Exception pages are not forced into inline-frame, dynamic-panel, or repeated-shell behavior.",
+    "Each page task cites its architectureRole before selecting route, shell, frame, or panel-state behavior.",
+  ],
+};
 
 const routeGraph = {
   entry: `${entryPageKey}.html`,
@@ -499,6 +538,8 @@ const routeGraph = {
     pageKey: page.pageKey,
     html: page.html,
     route: page.route,
+    architectureRole: page.architectureRole,
+    localArchitectureProfile: page.localArchitectureProfile,
     linksTo: page.outgoing.map((target) => ({
       html: target,
       pageKey: path.basename(target, ".html").toLowerCase(),
@@ -774,13 +815,28 @@ const architectureTasks = [
     id: "AX-002A",
     phase: "architecture",
     title: "Confirmed Architecture Strategy",
-    evidence: ["axure-analysis.json architecture", "references/prototype-architecture-profiles.md"],
+    evidence: ["axure-analysis.json architecture", "architecture-scope-ledger.json", "references/prototype-architecture-profiles.md"],
     scope: `confirmed profile ${architectureProfile} (${architectureConfidence} confidence) drives route/menu/panel task strategy`,
     acceptance: [
       "confirmed or auto-approved architecture profile is recorded in superpower-workflow.json",
       "task plan uses the selected profile's navigation strategy instead of a generic menu strategy",
     ],
     validation: ["inspect axure-analysis.json architecture", "inspect task-plan.md architecture section"],
+  },
+  {
+    id: "AX-002B",
+    phase: "architecture",
+    title: "Profile Scope And Page Roles",
+    evidence: ["architecture-scope-ledger.json", "page-inventory.json", "route-graph.json"],
+    scope:
+      "apply the confirmed architecture profile only to main app pages; preserve entry/standalone exception pages with local route/component behavior",
+    acceptance: [
+      "main app pages and exception pages are listed before implementation",
+      "inline-frame profile is limited to shell and embedded target pages",
+      "dynamic-panel profile is limited to dynamic-panel app pages",
+      "entry/standalone pages are not wrapped in invented shell/frame/panel state behavior",
+    ],
+    validation: ["inspect architecture-scope-ledger.json", "inspect per-page task source roles"],
   },
 ];
 if (isDynamicPanelApp) {
@@ -932,6 +988,8 @@ const superpowerWorkflow = {
   evidenceSummary: {
     architectureProfile,
     architectureConfidence,
+    scopedMainAppPages: architectureScope.main_app_pages?.length || 0,
+    scopedExceptionPages: architectureScope.exception_pages?.length || 0,
     pages: pageInventory.length,
     mustImplement: elementCoverageLedger.length,
     interactionSources: interactionSourceCount,
@@ -941,6 +999,7 @@ const superpowerWorkflow = {
     menuTargets: sharedChromeLedger.menuTargets.length,
   },
   artifacts: {
+    architectureScope: "axure-ledgers/architecture-scope-ledger.json",
     pageInventory: "axure-ledgers/page-inventory.json",
     routeGraph: "axure-ledgers/route-graph.json",
     sharedChrome: "axure-ledgers/shared-chrome-ledger.json",
@@ -978,11 +1037,19 @@ const taskPlan = `# Axure Restoration Task Plan
 - Responsive target: desktop web, reference viewport ${referenceViewport.width}x${referenceViewport.height}
 - Data handling: local typed prototype data from Axure ledgers
 - Architecture profile: ${architectureProfile} (${architectureConfidence})
-- Architecture rule: confirmed profile controls menu, route, inline-frame, and dynamic-panel state restoration; dynamic-panel app menus with setPanelState must update local panel state instead of becoming route/linkFrame navigation.
+- Architecture scope: ${(architectureScope.primary_profile_applies_to || []).join(", ") || "not recorded"}
+- Architecture exceptions: ${(architectureScope.exception_pages || []).join(", ") || "none"}
+- Architecture rule: confirmed profile controls menu, route, inline-frame, and dynamic-panel state restoration only for scoped main app pages; entry/standalone pages keep local restoration rules. Dynamic-panel app menus with setPanelState must update local panel state instead of becoming route/linkFrame navigation.
 
 ## Architecture Evidence
 
 ${(architecture.candidates?.[0]?.evidence || []).map((item) => `- ${item}`).join("\n") || "- No architecture evidence recorded."}
+
+## Page Roles
+
+| Axure page | Role | Local profile |
+| --- | --- | --- |
+${pageInventory.map((page) => `| ${page.html} | ${page.architectureRole} | ${page.localArchitectureProfile || ""} |`).join("\n")}
 
 ## Task Manifest
 
@@ -1055,6 +1122,8 @@ const readme = `# AImeet Axure Restoration
 - Entry page: create-meeting.html
 - Reference viewport: ${referenceViewport.width}x${referenceViewport.height}
 - Architecture profile: ${architectureProfile} (${architectureConfidence})
+- Architecture scope: ${(architectureScope.primary_profile_applies_to || []).join(", ") || "not recorded"}
+- Architecture exceptions: ${(architectureScope.exception_pages || []).join(", ") || "none"}
 
 ## Restoration Scope
 
@@ -1065,9 +1134,9 @@ const readme = `# AImeet Axure Restoration
 
 ## Route Map
 
-| Axure page | Route | Initial widgets | Must implement |
-| --- | --- | ---: | ---: |
-${pageInventory.map((page) => `| ${page.html} | ${page.route} | ${page.counts.initiallyVisible} | ${page.counts.mustImplement} |`).join("\n")}
+| Axure page | Route | Role | Local profile | Initial widgets | Must implement |
+| --- | --- | --- | --- | ---: | ---: |
+${pageInventory.map((page) => `| ${page.html} | ${page.route} | ${page.architectureRole} | ${page.localArchitectureProfile || ""} | ${page.counts.initiallyVisible} | ${page.counts.mustImplement} |`).join("\n")}
 
 ## Page Flow
 
@@ -1088,7 +1157,7 @@ ${routeGraph.routes
 - Text boxes, selects, checkboxes, images, repeaters, buttons, and hidden dynamic panels are mapped from source evidence.
 - Axure repeaters are treated as framework List/ListItem data components by default, with Table/Grid used only when source evidence supports that mapping.
 - Repeated left icon rails are consolidated into shared chrome; slot geometry and linkWindow targets come from \`shared-chrome-ledger.json\`.
-- Confirmed architecture profile controls navigation restoration: repeated-shell profiles use shared route chrome, inline-frame profiles use targeted \`linkFrame\` outlets, and dynamic-panel app profiles use local \`setPanelState\` state machines for menus.
+- Confirmed architecture profile controls navigation restoration only for scoped pages: repeated-shell pages use shared route chrome, inline-frame shell/target pages use targeted \`linkFrame\` outlets, and dynamic-panel app pages use local \`setPanelState\` state machines for menus. Entry/standalone pages remain independent unless Axure explicitly embeds them.
 - Zero-size or transparent interactive Axure groups are expanded or transferred to their visible slot bounds so their events remain clickable.
 - SVG-only UI icons are replaced with framework icons inferred from nearby text, link targets, and stable shared-menu slot order.
 - Interaction sources and their action targets are auditable in \`axure-ledgers/interaction-contract-ledger.json\`.
@@ -1125,6 +1194,7 @@ Generated by skill evidence script. Run validation after starting the dev server
 `;
 
 ensureDir(ledgersDir);
+writeJson("architecture-scope-ledger.json", architectureScopeLedger);
 writeJson("page-inventory.json", pageInventory);
 writeJson("route-graph.json", routeGraph);
 writeJson("shared-chrome-ledger.json", sharedChromeLedger);
